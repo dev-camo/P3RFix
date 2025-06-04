@@ -1,6 +1,5 @@
 # Persona 3 Reload Fix
-[![Patreon-Button](https://github.com/Lyall/FISTFix/assets/695941/19c468ac-52af-4790-b4eb-5187c06af949)](https://www.patreon.com/Wintermance) [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/W7W01UAI9)<br />
-[![Github All Releases](https://img.shields.io/github/downloads/Lyall/P3RFix/total.svg)](https://github.com/Lyall/P3RFix/releases)
+[![Patreon-Button](.github/images/Patreon-Button.png)](https://www.patreon.com/Wintermance) [![ko-fi](.github/images/Kofi-Button.svg)](https://ko-fi.com/W7W01UAI9)
 
 This is a fix that adds custom resolutions, ultrawide support and more to Persona 3 Reload.<br />
 
@@ -15,7 +14,7 @@ This is a fix that adds custom resolutions, ultrawide support and more to Person
 - The ability to increase/decrease resolution of render texture targets (i.e menus, persona model previews).
 
 ## Installation
-- Grab the latest release of P3RFix from [here.](https://github.com/Lyall/P3RFix/releases)
+- Download the latest [release](../../../releases). 
 - Extract the contents of the release zip in to the the game's binary folder.<br />(e.g. "**XboxGames\Persona 3 Reload\Content**" for Xbox/MS Store or "**steamapps\common\P3R**" for Steam).
 
 ### Steam Deck/Linux Additional Instructions
@@ -32,7 +31,6 @@ Before starting, make sure to **delete any P3RFix files** inside of the game's f
 To make sure P3RFix loads alongside any Reloaded II mods you are using, follow these steps:
 
 - Install the P3RFix Reloaded-II package.
-    - ![pulse-browser_9bf87yUHiU](https://github.com/Lyall/P3RFix/assets/6697380/9a0b6bdf-ebda-45e2-a292-7858107c3435)
 
 - Drag and drop `P3RFix_Reloaded-II.zip` onto the Reloaded-II window. (Alternatively: [Manual Install](https://reloaded-project.github.io/Reloaded-II/QuickStart/))
 
@@ -50,13 +48,7 @@ This list will contain bugs which may or may not be fixed.
 
 - Some screen fades/transitions may not span the screen at non-16:9 resolutions.
 - If you skip intro to the load save menu, then back out, you will softlock the game.
-- Disabling pause on focus loss while using m/kbd can cause issues with mouse capture. Enter a menu first to release the cursor. ([#35](https://github.com/Lyall/P3RFix/issues/35))
-
-## Screenshots
-
-| ![ezgif-5-7e73acc575](https://github.com/Lyall/P3RFix/assets/695941/56b5088b-1272-4621-9d71-e1bda21337d5) |
-|:--:|
-| Gameplay |
+- Disabling pause on focus loss while using m/kbd can cause issues with mouse capture. Enter a menu first to release the cursor.
 
 ## Credits
 [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader) for ASI loading. <br />
