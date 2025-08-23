@@ -1,9 +1,11 @@
+
 #pragma once
 
 #define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 
+#include <windows.h>
 #include <cassert>
-#include <Windows.h>
 #include <fstream>
-#include <inttypes.h>
 #include <filesystem>
+#include <vector>
