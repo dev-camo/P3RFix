@@ -399,7 +399,7 @@ void* UTextureRenderTarget2D_PostLoad_hk(SDK::UTextureRenderTarget2D* pRenderTar
     spdlog::info("Render Texture 2D Resolution: New render texture resolution = {}x{}", pRenderTarget->SizeX, pRenderTarget->SizeY);
 
     // Run original function
-    return UTextureRenderTarget2D_PostLoad_fn.stdcall<void*>(pRenderTarget);
+    return UTextureRenderTarget2D_PostLoad_fn.stdcall<SDK::UTextureRenderTarget2D*>(pRenderTarget);
 }
 
 void RenderTextures()
@@ -640,6 +640,29 @@ void HUDFix()
         }
         else {
             spdlog::error("HUD: FFWD Effect: Pattern scan failed.");
+        }
+
+        // Backgrounds
+        std::uint8_t* BackgroundsScanResult = Memory::PatternScan(exeModule, "0F 28 ?? 48 89 ?? ?? ?? 49 ?? ?? ?? 48 89 ?? ?? ?? 49 ?? ?? ?? 48 89 ?? ?? ?? 49 ?? ?? ?? 48 89 ?? ?? ??");
+        if (BackgroundsScanResult) {
+            spdlog::info("HUD: Backgrounds: Address is {:s}+{:x}", sExeName.c_str(), BackgroundsScanResult - reinterpret_cast<std::uint8_t*>(exeModule));
+            static SafetyHookMid BackgroundsMidHook{};
+            BackgroundsMidHook = safetyhook::create_mid(BackgroundsScanResult + 0x3,
+                [](SafetyHookContext& ctx) {
+                    if (ctx.xmm5.f32[0] == 1920.0f && ctx.xmm4.f32[0] == 1080.0f) {
+                        if (fAspectRatio > fNativeAspect) {
+                            ctx.xmm5.f32[0] = 1080.0f * fAspectRatio;
+                            ctx.xmm1.f32[0] = (1920.0f - ctx.xmm5.f32[0]) / 2.0f;
+                        }
+                        else if (fAspectRatio < fNativeAspect) {
+                            ctx.xmm4.f32[0] = 1920.0f / fAspectRatio;
+                            ctx.xmm2.f32[0] = (1080.0f - ctx.xmm4.f32[0]) / 2.0f;
+                        }
+                    }
+                });
+        }
+        else {
+            spdlog::error("HUD: Backgrounds: Pattern scan failed.");
         }
 
         // Get fade status
