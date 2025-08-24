@@ -365,8 +365,8 @@ void Resolution()
     }
 }
 
-SafetyHookInline RenTexPostLoad{};
-void* RenTexPostLoad_Hooked(std::uint8_t* thisptr)
+SafetyHookInline UTextureRenderTarget2D_PostLoad_fn{};
+void* UTextureRenderTarget2D_PostLoad_hk(SDK::UTextureRenderTarget2D* pRenderTarget)
 {
     // Calculate optimal resolution multiplier assuming target is 1080p
     // Screen percentage is only retrieved when the hook is run, meaning that on first boot we have to assume it is 100%
@@ -386,25 +386,20 @@ void* RenTexPostLoad_Hooked(std::uint8_t* thisptr)
     }
     spdlog::info("Render Texture 2D Resolution: fRenTexResMulti = {}", fRenTexResMulti);
 
-    std::uint32_t* SizeX = (std::uint32_t*)(thisptr + 0x180);
-    std::uint32_t* SizeY = (std::uint32_t*)(thisptr + 0x184);
-    std::uint8_t* RTFormat = (std::uint8_t*)(thisptr + 0x19B);
-    std::uint32_t* LightingGUID = (std::uint32_t*)(thisptr + 0x68);
+    spdlog::info("Render Texture 2D Resolution: Old render texture resolution = {}x{}", pRenderTarget->SizeX, pRenderTarget->SizeY);
 
-    spdlog::info("Render Texture 2D Resolution: Old render texture resolution = {}x{}", *SizeX, *SizeY);
+    pRenderTarget->SizeX = static_cast<int32_t>(pRenderTarget->SizeX * fRenTexResMulti);
+    pRenderTarget->SizeY = static_cast<int32_t>(pRenderTarget->SizeY * fRenTexResMulti);
 
-    *SizeX *= fRenTexResMulti;
-    *SizeY *= fRenTexResMulti;
-
-    if (*RTFormat == 6) {
-        iRTCapX = *SizeX;
-        iRTCapY = *SizeY;
+    if (pRenderTarget->RenderTargetFormat == SDK::ETextureRenderTargetFormat::RTF_RGBA16f) {
+        iRTCapX = pRenderTarget->SizeX;
+        iRTCapY = pRenderTarget->SizeY;
     }
 
-    spdlog::info("Render Texture 2D Resolution: New render texture resolution = {}x{}", *SizeX, *SizeY);
+    spdlog::info("Render Texture 2D Resolution: New render texture resolution = {}x{}", pRenderTarget->SizeX, pRenderTarget->SizeY);
 
     // Run original function
-    return RenTexPostLoad.stdcall<void*>(thisptr);
+    return UTextureRenderTarget2D_PostLoad_fn.stdcall<void*>(pRenderTarget);
 }
 
 void RenderTextures()
@@ -412,13 +407,13 @@ void RenderTextures()
     if (bRenTexResMulti)
     {
         // Render Texture 2D Resolution
-        std::uint8_t* RenTex2DScanResult = Memory::PatternScan(exeModule, "8B ?? ?? ?? 00 00 44 ?? ?? ?? ?? ?? ?? 41 ?? ?? 8B ?? ?? ?? 00 00 44 ?? ?? ?? 66 ?? ?? ??");
-        if (RenTex2DScanResult) {
-            RenTexPostLoad = safetyhook::create_inline(reinterpret_cast<void*>(RenTex2DScanResult), RenTexPostLoad_Hooked);
-            spdlog::info("Render Textures: 2D Resolution: Address is {:s}+{:x}", sExeName.c_str(), RenTex2DScanResult - reinterpret_cast<std::uint8_t*>(exeModule));
+        std::uint8_t* UTextureRenderTarget2D_PostLoadScanResult = Memory::PatternScan(exeModule, "8B ?? ?? ?? 00 00 44 ?? ?? ?? ?? ?? ?? 41 ?? ?? 8B ?? ?? ?? 00 00 44 ?? ?? ?? 66 ?? ?? ??");
+        if (UTextureRenderTarget2D_PostLoadScanResult) {
+            UTextureRenderTarget2D_PostLoad_fn = safetyhook::create_inline(reinterpret_cast<void*>(UTextureRenderTarget2D_PostLoadScanResult), UTextureRenderTarget2D_PostLoad_hk);
+            spdlog::info("Render Textures: TextureRenderTarget2D: Address is {:s}+{:x}", sExeName.c_str(), UTextureRenderTarget2D_PostLoadScanResult - reinterpret_cast<std::uint8_t*>(exeModule));
         }
         else {
-            spdlog::error("Render Textures: 2D Resolution: Pattern scan failed.");
+            spdlog::error("Render Textures: TextureRenderTarget2D: Pattern scan failed.");
         }
 
         // RT_Capture
@@ -428,7 +423,7 @@ void RenderTextures()
             static SafetyHookMid RTCaptureMidHook{};
             RTCaptureMidHook = safetyhook::create_mid(RTCaptureScanResult + 0x14,
                 [](SafetyHookContext& ctx) {
-                    if (ctx.rax + 0x1FC && ctx.rax + 0x200) {
+                    if (ctx.rax) {
                         *reinterpret_cast<int*>(ctx.rax + 0x1FC) = iRTCapX;
                         *reinterpret_cast<int*>(ctx.rax + 0x200) = iRTCapY;
                     }
@@ -605,7 +600,7 @@ void AspectRatioFOV()
 
 void HUDFix()
 {
-    if (bHUDFix || bRenTexResMulti)
+    if (bHUDFix)
     {
         // HUD Rect
         std::uint8_t* HUDRectScanResult = Memory::PatternScan(exeModule, "F3 0F ?? ?? ?? ?? ?? ?? F3 41 ?? ?? ?? ?? 0F 28 ?? ?? ?? 66 0F ?? ?? F3 0F ?? ??");
