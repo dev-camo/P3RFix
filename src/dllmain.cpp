@@ -370,9 +370,9 @@ void* UTextureRenderTarget2D_PostLoad_hk(SDK::UTextureRenderTarget2D* pRenderTar
 {
     // Calculate optimal resolution multiplier assuming target is 1080p
     // Screen percentage is only retrieved when the hook is run, meaning that on first boot we have to assume it is 100%
-    float fOptimalRenTexResMulti = (iCustomResY * (fScreenPercentage / 100)) / 1080;
+    float fOptimalRenTexResMulti = (iCurrentResY * (fScreenPercentage / 100)) / 1080;
 
-    if (iCustomResX <= 1920 || iCustomResX <= 1080)
+    if (iCurrentResX <= 1920 || iCurrentResX <= 1080)
         fOptimalRenTexResMulti = 1.0f; // Avoid lowering resolution of render targets when resolution is <1080p.
 
     if (fRenTexResUserMulti == 1.0f)
