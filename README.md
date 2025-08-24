@@ -42,6 +42,11 @@ To make sure P3RFix loads alongside any Reloaded II mods you are using, follow t
 ## Configuration
 - See **P3RFix.ini** to adjust settings for the fix.
 
+## Screenshots
+| ![p3r_comparison](.github/images/p3r_comparison.gif) |
+|:--------------------------:|
+| Gameplay |
+
 ## Known Issues
 Please report any issues you see.
 This list will contain bugs which may or may not be fixed.
