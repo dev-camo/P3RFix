@@ -15,9 +15,9 @@ Players will download maintained P3RFix builds from dev-camo/P3RFix. Pushing a v
 - [x] (2026-09-30 22:34Z) Removed fundraising assets; updated documentation, Reloaded-II update source, attribution, and dependency notices; pushed four focused commits to origin/main.
 - [x] (2026-09-30 22:37Z) Implemented Windows builds, version injection, pinned and verified loader download, archives, and tag-triggered publication; reviewed locally.
 - [x] (2026-09-30 22:40Z) Committed focused automation changes, pushed main, and observed Windows build 36786715366 succeed at 93815d9; inspected both build archives and generated release notes.
-- [ ] Update deprecated Action runtimes identified by GitHub and observe the revised preflight build.
-- [ ] Tag and push 1.2.5, observe successful publication, and inspect attached archives.
-- [ ] Record final evidence and sync the completed plan.
+- [x] (2026-09-30 22:43Z) Updated deprecated Action runtimes; Windows preflight build 36787078874 succeeded at 12baef999df058c56bebe68e017396bceaefa7d0.
+- [x] (2026-09-30 22:46Z) Tagged and pushed annotated 1.2.5; publication workflow 36787299471 succeeded and attached both archives to a public release.
+- [x] (2026-09-30 22:48Z) Downloaded published archives, verified their checksums and contents, and recorded final evidence for the completion commit.
 
 ## Surprises & Discoveries
 
@@ -30,7 +30,9 @@ The original MIT copyright notice must remain. Third-party license terms differ,
 
 The pinned Zydis CMake build must use the same static MSVC runtime as P3RFix. Its default differs from xmake's /MT setting, so the build now explicitly sets CMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded and skips examples, tools, and tests. Both Zydis and Zycore already enable the CMake policy needed for this setting. Annotated tags may involve both a tag object and its underlying commit; verification compares the underlying commits.
 
-The first remote build passed in 1 minute 27 seconds. GitHub reported that pinned checkout/upload Actions still target deprecated Node.js 20 and were forced onto Node.js 24. Update their pins, along with the corresponding download Action, before tagging. Downloaded build archives each contain 16 files, including 11 dependency license files, and Reloaded-II metadata reports version 1.2.5 and update owner dev-camo.
+The first remote build passed in 1 minute 27 seconds. GitHub reported that pinned checkout/upload Actions still target deprecated Node.js 20 and were forced onto Node.js 24. Their pins and the corresponding download Action were updated before tagging. Downloaded build archives each contain 16 files, including 11 dependency license files, and Reloaded-II metadata reports version 1.2.5 and update owner dev-camo.
+
+Published notice and configuration text uses Windows checkout line endings. Comparing those files to Linux source requires normalizing CRLF to LF; after normalization their contents match. Both ZIP SHA256 digests match GitHub's published digests, their archive integrity checks pass, and both contain the same Windows x64 ASI with the 1.2.5 version string.
 
 ## Decision Log
 
@@ -45,10 +47,14 @@ Decision: Separate archive creation from GitHub publication. Rationale: local bu
 
 Decision: Pin Ultimate ASI Loader v9.7.4 and xmake 3.1.1, and pin third-party Actions by commit. Rationale: version-tag builds should use recorded dependency versions instead of changing latest downloads. Date/Author: 2026-09-30, Codex.
 
+Decision: Use checkout v7.0.1, upload-artifact v7.0.1, and download-artifact v8.0.1 with verified commit pins. Rationale: these supported Actions use Node.js 24, resolving the runtime deprecation observed during the initial build. Date/Author: 2026-09-30, Codex.
+
 ## Outcomes & Retrospective
 
 
-Repository metadata and licensing changes are committed and pushed. Automation implementation, independent review, and the first native Windows build are complete. Build archives contain the expected binaries, configuration, notices, and stamped Reloaded-II metadata. Publication remains outstanding while Action runtimes are modernized; no release success is claimed until the remote workflow succeeds and its attachments are inspected.
+P3RFix 1.2.5 is publicly available at https://github.com/dev-camo/P3RFix/releases/tag/1.2.5 and is the repository's latest release. Both P3RFix_1.2.5.zip and P3RFix_Reloaded-II.zip are attached. The annotated tag points to 12baef999df058c56bebe68e017396bceaefa7d0, whose history includes the required cc2582b fix and eight focused maintenance commits. The native build and publishing jobs passed; downloaded published artifacts passed checksum, archive integrity, Windows x64 binary, version, configuration, and license-content inspection.
+
+Maintenance metadata, fundraising cleanup, licensing, and reusable tag release automation are complete and pushed. The final documentation commit records this acceptance evidence. In-game behavior was not exercised because the environment does not contain Persona 3 Reload; the existing viewport fix was preserved and included in the released source. The main lessons were to validate the native build before creating an immutable release tag and to distinguish Windows checkout line endings when comparing packaged text.
 
 ## Context and Orientation
 
@@ -89,6 +95,8 @@ From the repository root, inspect changes and stage only the intended files for 
 
 The ancestry command must exit successfully. Expect the release to list P3RFix_1.2.5.zip and P3RFix_Reloaded-II.zip and to be public rather than a draft.
 
+Completed publication used tag 1.2.5 at 12baef999df058c56bebe68e017396bceaefa7d0. Local downloaded acceptance artifacts are under ignored build/release-1.2.5/. The final plan-only commit uses [skip ci] in its message because the tagged native build and publication have already passed and this edit does not change build inputs.
+
 ## Validation and Acceptance
 
 
@@ -117,6 +125,20 @@ First Windows build evidence:
     P3RFix_1.2.5.zip: P3RFix.asi, P3RFix.ini, dsound.dll, notices, 11 license files
     P3RFix_Reloaded-II.zip: P3RFix.asi, P3RFix.ini, ModConfig.json, notices, 11 license files
 
+Final release evidence:
+
+    preflight: https://github.com/dev-camo/P3RFix/actions/runs/36787078874 (success)
+    publication: https://github.com/dev-camo/P3RFix/actions/runs/36787299471 (success)
+    release: https://github.com/dev-camo/P3RFix/releases/tag/1.2.5
+    source: 12baef999df058c56bebe68e017396bceaefa7d0
+    annotated tag object: 334d6ddf6cdcde4fa86b96b4a5e7e7c2056cbcd0
+    P3RFix_1.2.5.zip: 875532 bytes
+    SHA256: 84ab1ed77711689d4d27c7fa057855c6ea45cc3455f3013baa329ceee01787f8
+    P3RFix_Reloaded-II.zip: 479968 bytes
+    SHA256: 455e3d91e928a2e454b248b9b5fc00631015e7751be0cfd06c6af190f1d20c8e
+    Each package: 1194496-byte Windows x64 P3RFix.asi, version 1.2.5
+    Remote comparison with cc2582b: ahead 8, behind 0
+
 ## Interfaces and Dependencies
 
 
@@ -127,3 +149,5 @@ Revision note (2026-09-30): Initial plan records repository findings, authorized
 Revision note (2026-09-30 22:37Z): Recorded completed cleanup, implemented interfaces, pinned tools, runtime compatibility, and annotated-tag handling before the first remote build.
 
 Revision note (2026-09-30 22:41Z): Recorded successful native build and inspected archives; added a runtime modernization step prompted by actual GitHub annotations.
+
+Revision note (2026-09-30 22:48Z): Recorded successful modernized build, annotated tag publication, public release assets, and downloaded artifact acceptance evidence. No implementation work remains.
