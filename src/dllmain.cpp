@@ -297,6 +297,8 @@ void Resolution()
             iCustomResY = DesktopDimensions.second;
         }
 
+        iCurrentResX = iCustomResX;
+        iCurrentResY = iCustomResY;
         CalculateAspectRatio(true);
 
         // Apply custom resolution
@@ -321,15 +323,19 @@ void Resolution()
         }
     }
 
-    // Get current resolution
-    std::uint8_t* CurrentResolutionScanResult = Memory::PatternScan(exeModule, "44 89 ?? ?? ?? ?? ?? 44 89 ?? ?? ?? ?? ?? 44 89 ?? ?? ?? ?? ??  88 ?? ?? ?? ?? ??");
+    // Get current resolution when FSceneViewport::UpdateViewportRHI creates or resizes the viewport.
+    std::uint8_t* CurrentResolutionScanResult = Memory::PatternScan(exeModule, "44 89 A5 A8 00 00 00 48 8D 75 10 44 89 BD AC 00 00 00 4D 85 F6 89 85 B4 00 00 00");
     if (CurrentResolutionScanResult) {
         spdlog::info("Current Resolution: Address is {:s}+{:x}", sExeName.c_str(), CurrentResolutionScanResult - reinterpret_cast<std::uint8_t*>(exeModule));
         static SafetyHookMid CurrentResolutionMidHook{};
         CurrentResolutionMidHook = safetyhook::create_mid(CurrentResolutionScanResult,
             [](SafetyHookContext& ctx) {
-                int iResX = (int)ctx.r13;
-                int iResY = (int)ctx.r12;
+                int iResX = (int)ctx.r12;
+                int iResY = (int)ctx.r15;
+
+                // Keep the last valid resolution while the viewport is empty or minimised.
+                if (iResX <= 0 || iResY <= 0)
+                    return;
 
                 // Log resolution
                 if (iResX != iCurrentResX || iResY != iCurrentResY) {
