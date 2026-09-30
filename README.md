@@ -72,6 +72,8 @@ git submodule update --init --recursive
 
 The script builds Windows x64 release binaries and creates `build/P3RFix_1.2.5.zip` and `build/P3RFix_Reloaded-II.zip`. The version is embedded in the binary and Reloaded-II metadata. Dependencies use the revisions recorded in Git; the standalone package bundles a pinned Ultimate ASI Loader download.
 
+The [Build packages workflow](https://github.com/dev-camo/P3RFix/actions/workflows/build.yml) also builds and packages pushes and pull requests to `main`, and supports manual runs. Review its build result and downloadable artifacts before tagging a release.
+
 ## Releasing
 
 Commit the release changes, then push the branch and a version tag pointing at that commit:
@@ -82,7 +84,15 @@ git tag -a 1.2.5 -m "Release 1.2.5"
 git push origin 1.2.5
 ```
 
-Use a new version number for each release. Tags may use `1.2.5` or `v1.2.5`. The [release workflow](https://github.com/dev-camo/P3RFix/actions) checks out the tagged commit and its submodules, builds that version and publishes both ZIP files on the matching [GitHub Release](https://github.com/dev-camo/P3RFix/releases).
+Use a new version number for each release. Tags may use `1.2.5` or `v1.2.5`. The [Publish release workflow](https://github.com/dev-camo/P3RFix/actions/workflows/release.yml) checks out the tagged commit and its submodules, builds that version and publishes both ZIP files on the matching [GitHub Release](https://github.com/dev-camo/P3RFix/releases).
+
+To retry a release for an existing tag, open **Publish release → Run workflow** in GitHub Actions and enter the tag in the `tag` field, or use GitHub CLI:
+
+```sh
+gh workflow run release.yml -f tag=1.2.5
+```
+
+A retry rebuilds the commit referenced by that tag and replaces the release's ZIP attachments. The workflow checks the tag's commit before building and publishing.
 
 ## License and Credits
 

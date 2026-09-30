@@ -12,8 +12,8 @@ Players will download maintained P3RFix builds from dev-camo/P3RFix. Pushing a v
 
 - [x] (2026-09-30 22:28Z) Inspected clean main branch, origin, existing metadata, build scripts, and required fix; initialized pinned dependency submodules.
 - [x] (2026-09-30 22:30Z) Enabled GitHub Issues, previously disabled on this fork, so support links have a working destination.
-- [ ] Remove fundraising assets and update documentation, Reloaded-II update source, attribution, and dependency notices.
-- [ ] Implement Windows builds, version injection, deterministic loader download, archives, and tag-triggered publication.
+- [x] (2026-09-30 22:34Z) Removed fundraising assets; updated documentation, Reloaded-II update source, attribution, and dependency notices; pushed four focused commits to origin/main.
+- [x] (2026-09-30 22:37Z) Implemented Windows builds, version injection, pinned and verified loader download, archives, and tag-triggered publication; reviewed locally.
 - [ ] Commit focused changes, push main, and observe the Windows build complete.
 - [ ] Tag and push 1.2.5, observe successful publication, and inspect attached archives.
 - [ ] Record final evidence and sync the completed plan.
@@ -27,6 +27,8 @@ GitHub Actions is enabled, and the authenticated dev-camo account has repository
 
 The original MIT copyright notice must remain. Third-party license terms differ, including SafetyHook's Boost Software License. Existing generated SDK provenance must remain visible.
 
+The pinned Zydis CMake build must use the same static MSVC runtime as P3RFix. Its default differs from xmake's /MT setting, so the build now explicitly sets CMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded and skips examples, tools, and tests. Both Zydis and Zycore already enable the CMake policy needed for this setting. Annotated tags may involve both a tag object and its underlying commit; verification compares the underlying commits.
+
 ## Decision Log
 
 
@@ -38,10 +40,12 @@ Decision: Build main without publishing before creating the release tag, and use
 
 Decision: Separate archive creation from GitHub publication. Rationale: local builds should not create external releases, while GitHub's publication job needs write permission only after a successful build. Date/Author: 2026-09-30, Codex.
 
+Decision: Pin Ultimate ASI Loader v9.7.4 and xmake 3.1.1, and pin third-party Actions by commit. Rationale: version-tag builds should use recorded dependency versions instead of changing latest downloads. Date/Author: 2026-09-30, Codex.
+
 ## Outcomes & Retrospective
 
 
-Repository inspection and access checks are complete. Metadata cleanup and automation implementation are in progress. Publication remains outstanding; no release success is claimed until the remote workflow succeeds and its attachments are inspected.
+Repository metadata and licensing changes are committed and pushed. Automation implementation and independent review are complete. Publication remains outstanding; no release success is claimed until the remote workflow succeeds and its attachments are inspected.
 
 ## Context and Orientation
 
@@ -59,7 +63,7 @@ Remove Patreon and Ko-fi links and their unused images. Point release, issue, pr
 ### Milestone 2: Build and release automation
 
 
-Refactor create_release.ps1 into a noninteractive, fail-fast archive builder accepting -Version. Download an explicit Ultimate ASI Loader release and check its SHA256, a digest that detects changes to the downloaded bytes. Stage files under build/ and generate P3RFix_<version>.zip and P3RFix_Reloaded-II.zip, including notices. Pass the version through an xmake option into a C++ macro. Preserve a local default version. Create a reusable Windows build workflow and main-branch build workflow with read access. A separate release workflow runs on version-tag pushes, checks out the exact source commit with recursive dependencies, and publishes the successful build's archives using the GitHub CLI. Publication receives contents:write permission. Manual recovery accepts an existing tag and validates its target.
+Refactor create_release.ps1 into a noninteractive, fail-fast archive builder accepting -Version. Download Ultimate ASI Loader v9.7.4 and check its SHA256, a digest that detects changes to the downloaded bytes. Stage files under build/ and generate P3RFix_<version>.zip and P3RFix_Reloaded-II.zip, including notices. Generate build/release_body.md using the matching CHANGELOG.md section and release_body.md installation template. Pass the version through the xmake fix_version option into the C++ P3RFIX_VERSION macro. Preserve a local default version. .github/workflows/build.yml performs reusable Windows builds, main-branch and pull-request builds, and manual development builds with read access. .github/workflows/release.yml runs on version-tag pushes, checks out the exact source commit with recursive dependencies, and publishes the successful build's archives using the GitHub CLI. Publication receives contents:write permission. Manual recovery accepts an existing tag and validates its target.
 
 ### Milestone 3: Publish and observe 1.2.5
 
@@ -105,6 +109,8 @@ Initial source evidence:
 ## Interfaces and Dependencies
 
 
-Use GitHub-hosted Windows MSVC, xmake, CMake, the repository's pinned inipp/spdlog/SafetyHook/Zydis/Zycore revisions, and a pinned Ultimate ASI Loader x64 release. create_release.ps1 -Version 1.2.5 is the packaging interface. GitHub CLI publishes an existing tag with both archives and release notes, using the workflow token. Reloaded-II retains ModId p3rpc.p3rfix and asset filename P3RFix_Reloaded-II.zip so the mod's identity remains stable.
+Use GitHub-hosted windows-2022 MSVC, xmake 3.1.1, CMake, the repository's pinned inipp/spdlog/SafetyHook/Zydis/Zycore revisions, and Ultimate ASI Loader v9.7.4 x64. create_release.ps1 -Version 1.2.5 is the packaging interface. GitHub CLI publishes an existing tag with both archives and release notes, using the workflow token. Reloaded-II retains ModId p3rpc.p3rfix and asset filename P3RFix_Reloaded-II.zip so the mod's identity remains stable. Manual publication recovery is gh workflow run release.yml -f tag=1.2.5; it rebuilds that tag and replaces its attachments.
 
 Revision note (2026-09-30): Initial plan records repository findings, authorized scope, and observable release acceptance.
+
+Revision note (2026-09-30 22:37Z): Recorded completed cleanup, implemented interfaces, pinned tools, runtime compatibility, and annotated-tag handling before the first remote build.

@@ -1,0 +1,116 @@
+name: Publish release
+
+on:
+  push:
+    tags:
+      - '[0-9]*.[0-9]*.[0-9]*'
+      - 'v[0-9]*.[0-9]*.[0-9]*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to build and publish (for example, 1.2.5)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.tag.outputs.version }}
+      sha: ${{ steps.tag.outputs.sha }}
+    steps:
+      - name: Check out the requested tag
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify version tag and exact commit
+        id: tag
+        shell: bash
+        env:
+          REQUESTED_TAG: ${{ inputs.tag || github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_SHA: ${{ github.sha }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$REQUESTED_TAG" =~ ^v?(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo 'Release tag must have the form X.Y.Z or vX.Y.Z.' >&2
+            exit 1
+          fi
+          tag_sha=$(git rev-parse --verify "refs/tags/$REQUESTED_TAG^{commit}")
+          head_sha=$(git rev-parse HEAD)
+          if [[ "$tag_sha" != "$head_sha" ]]; then
+            echo 'Checkout does not match the requested version tag.' >&2
+            exit 1
+          fi
+          if [[ "$EVENT_NAME" == push ]]; then
+            event_commit=$(git rev-parse --verify "$EVENT_SHA^{commit}")
+            if [[ "$REF_TYPE" != tag || "$head_sha" != "$event_commit" ]]; then
+              echo 'Tag has moved since this push triggered the workflow.' >&2
+              exit 1
+            fi
+          fi
+          echo "tag=$REQUESTED_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${REQUESTED_TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "sha=$head_sha" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: resolve
+    uses: ./.github/workflows/build.yml
+    with:
+      source_sha: ${{ needs.resolve.outputs.sha }}
+      version: ${{ needs.resolve.outputs.version }}
+
+  publish:
+    needs: [resolve, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download verified build packages
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ${{ needs.build.outputs.artifact_name }}
+          path: build
+
+      - name: Create release or retry asset upload
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.resolve.outputs.version }}
+          SOURCE_SHA: ${{ needs.resolve.outputs.sha }}
+        run: |
+          set -euo pipefail
+          # Require the remote tag and recheck its commit before publishing.
+          gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" > /dev/null
+          remote_sha=$(gh api "repos/$GH_REPO/commits/$RELEASE_TAG" --jq .sha)
+          if [[ "$remote_sha" != "$SOURCE_SHA" ]]; then
+            echo 'Remote version tag changed during the build; refusing to publish.' >&2
+            exit 1
+          fi
+          assets=("build/P3RFix_$RELEASE_VERSION.zip" 'build/P3RFix_Reloaded-II.zip')
+          for asset in "${assets[@]}" build/release_body.md; do
+            test -s "$asset"
+          done
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
+            gh release edit "$RELEASE_TAG" --title "P3RFix $RELEASE_VERSION" --notes-file build/release_body.md
+          else
+            gh release create "$RELEASE_TAG" "${assets[@]}" --verify-tag \
+              --title "P3RFix $RELEASE_VERSION" --notes-file build/release_body.md
+          fi
