@@ -1,174 +1,111 @@
-# Get version param
+#Requires -Version 7.2
 param (
+    [ValidatePattern('^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$')]
     [string]$Version
 )
 
-# Configuration
-$Username = "Lyall"
-$RepoName = "P3RFix"
-$ProxyName = "dsound.dll"
-$Arch = "x64"
-$ZipFolder = "tmp"
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
 
 if (-not $Version) {
-    $Version = Read-Host "Enter release version"
+    throw 'Pass a release version, for example: ./create_release.ps1 -Version 1.2.5'
+}
+if (-not $IsWindows) {
+    throw 'Release builds require Windows with Visual Studio 2022, CMake, and xmake.'
 }
 
-# Build
-Write-Host "($Arch) Building with xmake..."
-xmake f -p windows -a $Arch -m release
-xmake build -v
+# Pin the loader binary and verify it before including it in a release.
+# https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases/tag/v9.7.4
+$LoaderVersion = 'v9.7.4'
+$LoaderArchive = 'Ultimate-ASI-Loader-NoPDB_x64.zip'
+$LoaderSha256 = 'e5860e7d9a1805267535b65749575b5e406cc6ea3325c7392189c578815045d1'
+$ZipName = "P3RFix_${Version}.zip"
 
-# Download ultimate ASI loader
-Write-Host "($Arch) Downloading Ultimate ASI Loader..."
+Push-Location $PSScriptRoot
+try {
+    $BuildDirectory = Join-Path $PSScriptRoot 'build'
+    $StagingDirectory = Join-Path $BuildDirectory 'package-staging'
+    $DownloadDirectory = Join-Path $BuildDirectory 'release-inputs'
+    $StandaloneDirectory = Join-Path $StagingDirectory 'standalone'
+    $ReloadedDirectory = Join-Path $StagingDirectory 'reloaded'
+    $LoaderDirectory = Join-Path $StagingDirectory 'loader'
+    $ZipPath = Join-Path $BuildDirectory $ZipName
+    $ReloadedZipPath = Join-Path $BuildDirectory 'P3RFix_Reloaded-II.zip'
+    $ReleaseBodyPath = Join-Path $BuildDirectory 'release_body.md'
 
-if ($Arch -eq "x86") {
-    $asiUrl = "https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases/latest/download/Ultimate-ASI-Loader.zip"
-    $asiZipFile = "Ultimate-ASI-Loader_x86.zip"
-} else {
-    $asiUrl = "https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases/latest/download/Ultimate-ASI-Loader_x64.zip"
-    $asiZipFile = "Ultimate-ASI-Loader_x64.zip"
-}
-
-Invoke-WebRequest -Uri $asiUrl -OutFile $asiZipFile
-Expand-Archive -Force $asiZipFile -DestinationPath "." | Out-Null
-Remove-Item $asiZipFile
-
-# Prepare temp directory
-Write-Host "Preparing temporary directory..."
-Remove-Item -Recurse -Force $ZipFolder -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Path $ZipFolder | Out-Null
-Copy-Item -Path "build/windows/$Arch/release/*.asi" -Destination $ZipFolder/
-Copy-Item -Path "*.ini" -Destination $ZipFolder/
-Move-Item -Path dinput8.dll -Destination $ZipFolder/$ProxyName
-#New-Item -ItemType File -Path tmp/EXTRACT_TO_GAME_FOLDER | Out-Null
-
-# Create release zip
-$ZipName = "${RepoName}_${Version}.zip"
-$ZipPath = Join-Path -Path "build" -ChildPath $ZipName
-Write-Host "Creating release zip: $ZipPath"
-Compress-Archive -Path tmp\* -DestinationPath $ZipPath -Force
-
-# Create Reloaded-II zip
-Write-Host "Preparing Reloaded-II asset..."
-New-Item -ItemType Directory -Path $ZipFolder/reloaded | Out-Null
-Copy-Item -Path "build/windows/$Arch/release/*.asi" -Destination $ZipFolder/reloaded
-Copy-Item -Path "*.ini" -Destination $ZipFolder/reloaded
-Copy-Item -Path "assets/r2-package/ModConfig.json" -Destination $ZipFolder/reloaded
-$pathToJson = "${ZipFolder}/reloaded/ModConfig.json"
-(Get-Content $pathToJson -Raw) -replace '<REPLACED_VERSION_IN_CI>', $Version | Set-Content $pathToJson
-Compress-Archive -Path "$ZipFolder/reloaded\*" -DestinationPath "build/${RepoName}_Reloaded-II.zip" -Force
-
-# Clean up
-Write-Host "Cleaning up temp directory..."
-Remove-Item -Recurse -Force tmp
-
-Write-Host "Build $Version completed."
-
-# ---------------------
-
-# Prepare release body
-$ReleaseBodyPath = "release_body.md"
-$ReleaseBody = ""
-
-if (Test-Path $ReleaseBodyPath) {
-    $ReleaseBody = Get-Content $ReleaseBodyPath -Raw
-    $ReleaseBody = $ReleaseBody -replace "<RELEASE_ZIP_NAME>", $ZipName
-}
-
-# Function to create a release on a forgejo-compatible forge
-function New-Release {
-    param (
-        $ApiBaseUrl,
-        $Owner,
-        $Repo,
-        $Tag,
-        $Name,
-        $Body = "",
-        $AssetPath,
-        $Token,
-        $Draft = $false,
-        $Prerelease = $false,
-        $Platform = "Unknown"
-    )
-
-    $headers = @{
-        "Authorization" = "token $Token"
-        "Accept" = "application/json"
+    foreach ($RequiredPath in @('P3RFix.ini', 'assets/r2-package/ModConfig.json',
+        'LICENSE.md', 'THIRD_PARTY_NOTICES.md', 'licenses',
+        'licenses/Ultimate-ASI-Loader/LICENSE', 'release_body.md')) {
+        if (-not (Test-Path -LiteralPath $RequiredPath)) {
+            throw "Missing release input: $RequiredPath"
+        }
     }
 
-    # Create release
-    $releaseUrl = "$ApiBaseUrl/api/v1/repos/$Owner/$Repo/releases"
-    $releaseBody = @{
-        tag_name = $Tag
-        name = $Name
-        body = $Body
-        draft = $Draft
-        prerelease = $Prerelease
-    } | ConvertTo-Json
-
-    Write-Host "[$Platform] Creating release $Tag..."
-    try {
-        $release = Invoke-RestMethod -Uri $releaseUrl -Method Post -Headers $headers -Body $releaseBody -ContentType "application/json"
-    } catch {
-        Write-Error "[$Platform] Failed to create release: $_"
-        return $false
+    if (Test-Path -LiteralPath $StagingDirectory) {
+        Remove-Item -LiteralPath $StagingDirectory -Recurse -Force
+    }
+    New-Item -ItemType Directory -Path $StandaloneDirectory, $ReloadedDirectory,
+        $LoaderDirectory, $DownloadDirectory -Force | Out-Null
+    foreach ($OutputPath in @($ZipPath, $ReloadedZipPath, $ReleaseBodyPath)) {
+        if (Test-Path -LiteralPath $OutputPath) {
+            Remove-Item -LiteralPath $OutputPath -Force
+        }
     }
 
-    # Upload asset
-    $uploadUrl = "$ApiBaseUrl/api/v1/repos/$Owner/$Repo/releases/$($release.id)/assets?name=$(Split-Path $AssetPath -Leaf)"
-    Write-Host "[$Platform] Uploading asset..."
+    Write-Host "Building P3RFix $Version for Windows x64..."
+    & xmake f -y -p windows -a x64 -m release "--fix_version=$Version"
+    if ($LASTEXITCODE -ne 0) { throw "xmake configuration failed ($LASTEXITCODE)." }
+    & xmake build -y -v
+    if ($LASTEXITCODE -ne 0) { throw "xmake build failed ($LASTEXITCODE)." }
 
-    try {
-        $asset = Invoke-RestMethod -Uri $uploadUrl -Method Post -Headers $headers -InFile $AssetPath -ContentType "application/octet-stream"
-        Write-Host "[$Platform] Release created successfully: $($asset.browser_download_url)"
-        return $true
-    } catch {
-        Write-Error "[$Platform] Failed to upload asset: $_"
-        return $false
+    $BinaryPath = Join-Path $BuildDirectory 'windows/x64/release/P3RFix.asi'
+    if (-not (Test-Path -LiteralPath $BinaryPath -PathType Leaf)) {
+        throw "The release binary was not produced: $BinaryPath"
     }
-}
 
-$success = $true
+    $LoaderZipPath = Join-Path $DownloadDirectory $LoaderArchive
+    if (-not (Test-Path -LiteralPath $LoaderZipPath -PathType Leaf)) {
+        $LoaderUrl = "https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases/download/$LoaderVersion/$LoaderArchive"
+        Invoke-WebRequest -Uri $LoaderUrl -OutFile $LoaderZipPath
+    }
+    if ((Get-FileHash -LiteralPath $LoaderZipPath -Algorithm SHA256).Hash -ne $LoaderSha256) {
+        throw 'Ultimate ASI Loader archive failed SHA256 verification.'
+    }
+    Expand-Archive -LiteralPath $LoaderZipPath -DestinationPath $LoaderDirectory
+    $LoaderDllPath = Join-Path $LoaderDirectory 'dinput8.dll'
+    if (-not (Test-Path -LiteralPath $LoaderDllPath -PathType Leaf)) {
+        throw 'Ultimate ASI Loader archive does not contain dinput8.dll.'
+    }
 
-# Push release to local forgejo
-if ($env:FORGEJO_URL -and $env:FORGEJO_TOKEN) {
-    Write-Host "[Forgejo] Creating new release..."
-    $localReleaseCreated = New-Release -ApiBaseUrl $env:FORGEJO_URL `
-                                     -Owner $Username `
-                                     -Repo $RepoName `
-                                     -Tag "$Version" `
-                                     -Name "$Version" `
-                                     -Body $ReleaseBody `
-                                     -AssetPath $ZipPath `
-                                     -Token $env:FORGEJO_TOKEN `
-                                     -Draft $false `
-                                     -Platform "Forgejo"
-    $success = $success -and $localReleaseCreated
-}
+    foreach ($PackageDirectory in @($StandaloneDirectory, $ReloadedDirectory)) {
+        Copy-Item -LiteralPath $BinaryPath, 'P3RFix.ini', 'LICENSE.md',
+            'THIRD_PARTY_NOTICES.md' -Destination $PackageDirectory
+        Copy-Item -LiteralPath 'licenses' -Destination $PackageDirectory -Recurse
+    }
+    Copy-Item -LiteralPath $LoaderDllPath -Destination (Join-Path $StandaloneDirectory 'dsound.dll')
 
-# Push release to codeberg
-if ($env:CODEBERG_URL -and $env:CODEBERG_TOKEN) {
-     Write-Host "[Codeberg] Creating new release..."
-    $remoteReleaseCreated = New-Release -ApiBaseUrl $env:CODEBERG_URL `
-                                      -Owner $Username `
-                                      -Repo $RepoName `
-                                      -Tag "$Version" `
-                                      -Name "$Version" `
-                                      -Body $ReleaseBody `
-                                      -AssetPath $ZipPath `
-                                      -Token $env:CODEBERG_TOKEN `
-                                      -Draft $false `
-                                      -Platform "Codeberg"
-    $success = $success -and $remoteReleaseCreated
-}
+    $ModConfig = Get-Content -LiteralPath 'assets/r2-package/ModConfig.json' -Raw | ConvertFrom-Json
+    $ModConfig.ModVersion = $Version
+    $ModConfig | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath (Join-Path $ReloadedDirectory 'ModConfig.json') -Encoding utf8NoBOM
 
-if (-not ($env:FORGEJO_URL -or $env:CODEBERG_URL)) {
-    Write-Warning "No release platforms configured (FORGEJO_URL or CODEBERG_URL not set)"
-    exit 0
-}
+    Compress-Archive -Path (Join-Path $StandaloneDirectory '*') -DestinationPath $ZipPath
+    Compress-Archive -Path (Join-Path $ReloadedDirectory '*') -DestinationPath $ReloadedZipPath
 
-if (-not $success) {
-    Write-Error "One or more releases failed"
-    exit 1
+    $ReleaseBody = (Get-Content -LiteralPath 'release_body.md' -Raw).
+        Replace('<RELEASE_ZIP_NAME>', $ZipName).Replace('<VERSION>', $Version)
+    if (Test-Path -LiteralPath 'CHANGELOG.md') {
+        $Changelog = Get-Content -LiteralPath 'CHANGELOG.md' -Raw
+        $EscapedVersion = [regex]::Escape($Version)
+        $Changes = [regex]::Match($Changelog,
+            "(?ms)^## \[$EscapedVersion\][^\r\n]*\r?\n(?<body>.*?)(?=^## |\z)")
+        if ($Changes.Success) {
+            $ReleaseBody = "## Changes`n`n$($Changes.Groups['body'].Value.Trim())`n`n$ReleaseBody"
+        }
+    }
+    $ReleaseBody | Set-Content -LiteralPath $ReleaseBodyPath -Encoding utf8NoBOM
+
+    Remove-Item -LiteralPath $StagingDirectory -Recurse -Force
+    Write-Host "Created $ZipPath and $ReloadedZipPath"
+} finally {
+    Pop-Location
 }
