@@ -14,8 +14,11 @@ HMODULE exeModule = GetModuleHandle(NULL);
 HMODULE thisModule;
 
 // Fix details
+#ifndef P3RFIX_VERSION
+#define P3RFIX_VERSION "1.2.5"
+#endif
 std::string sFixName = "P3RFix";
-std::string sFixVersion = "1.2.5";
+std::string sFixVersion = P3RFIX_VERSION;
 std::filesystem::path FixPath;
 
 // Ini
@@ -1046,4 +1049,3 @@ BOOL APIENTRY DllMain( HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpRese
     }
     return TRUE;
 }
-

@@ -5,18 +5,30 @@ add_rules("mode.debug", "mode.release")
 set_languages("cxxlatest", "clatest")
 set_optimize("smallest")
 
+option("fix_version")
+    set_default("1.2.5")
+    set_showmenu(true)
+    set_description("Version embedded in P3RFix (set from the release tag in CI)")
+option_end()
+
 target("zydis")
     set_kind("static")
     before_build(function (target)
-        if not os.isfile("external/zydis/build/CMakeCache.txt") then
-            local arch = is_arch("x64") and "x64" or "Win32"
-            os.exec("cmake -S external/zydis -B external/zydis/build -A " .. arch .. " -DZYDIS_BUILD_SHARED_LIB=OFF")
-        end
-        os.exec("cmake --build external/zydis/build --config Release")
+        local arch = is_arch("x64") and "x64" or "Win32"
+        local builddir = "build/zydis/" .. arch
+        os.execv("cmake", {"-S", "external/zydis", "-B", builddir,
+            "-G", "Visual Studio 17 2022", "-A", arch,
+            "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded",
+            "-DZYDIS_BUILD_SHARED_LIB=OFF", "-DZYDIS_BUILD_EXAMPLES=OFF",
+            "-DZYDIS_BUILD_TOOLS=OFF", "-DZYDIS_BUILD_TESTS=OFF",
+            "-DZYDIS_BUILD_DOXYGEN=OFF"})
+        os.execv("cmake", {"--build", builddir, "--config", "Release"})
     end)
     on_load(function (target)
         target:add("includedirs", "external/zydis/include", "external/zydis/dependencies/zycore/include", {public = true})
-        target:add("links", "external/zydis/build/Release/Zydis.lib", "external/zydis/build/zycore/Release/Zycore.lib", {public = true})
+        local arch = is_arch("x64") and "x64" or "Win32"
+        local builddir = "build/zydis/" .. arch
+        target:add("links", builddir .. "/Release/Zydis.lib", builddir .. "/zycore/Release/Zycore.lib", {public = true})
         target:add("defines", "ZYDIS_STATIC_BUILD", "ZYCORE_STATIC_BUILD", {public = true})
     end)
 
@@ -27,6 +39,11 @@ target(name)
     add_files("src/*.cpp", "external/safetyhook/src/*.cpp", "src/SDK/Engine_functions.cpp", "src/SDK/CoreUObject_functions.cpp", "src/SDK/Basic.cpp")
     add_syslinks("user32")
     add_deps("zydis") 
+    on_load(function (target)
+        local version = get_config("fix_version")
+        assert(version and version:match("^%d+%.%d+%.%d+$"), "fix_version must have the form X.Y.Z")
+        target:add("defines", 'P3RFIX_VERSION="' .. version .. '"')
+    end)
     
     add_includedirs("external/spdlog/include", "external/inipp", "external/safetyhook/include")
 
