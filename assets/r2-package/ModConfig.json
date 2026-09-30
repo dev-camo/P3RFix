@@ -1,7 +1,7 @@
 {
   "ModId": "p3rpc.p3rfix",
   "ModName": "P3RFix",
-  "ModAuthor": "Lyall",
+  "ModAuthor": "dev-camo and contributors; originally by Lyall",
   "ModVersion": "<REPLACED_VERSION_IN_CI>",
   "ModDescription": "An \u0027Essentials\u0027 mod for P3R. Edit `P3RFix.ini` in Mod Folder to configure settings.",
   "ModDll": "",
@@ -17,7 +17,7 @@
   "ReleaseMetadataFileName": "p3rpc.p3rfix.ReleaseMetadata.json",
   "PluginData": {
     "GitHubRelease": {
-      "UserName": "Lyall",
+      "UserName": "dev-camo",
       "RepositoryName": "P3RFix",
       "UseReleaseTag": true,
       "AssetFileName": "P3RFix_Reloaded-II.zip"
@@ -29,5 +29,5 @@
   "SupportedAppId": [
     "p3r.exe"
   ],
-  "ProjectUrl": "https://codeberg.org/Lyall/P3RFix"
+  "ProjectUrl": "https://github.com/dev-camo/P3RFix"
 }

@@ -12,7 +12,7 @@ body:
     attributes:
       label: "Version Number"
       description: "Which version of P3RFix are you using? (Check the release name or `P3RFix.log`)"
-      placeholder: "e.g., v0.0.1"
+      placeholder: "e.g., 1.2.5"
     validations:
       required: true
 
@@ -42,6 +42,6 @@ body:
     id: log-file
     attributes:
       label: "Log File"
-      description: "Please upload `P3RFix.log` from the game folder."
+      description: "Please upload `P3RFix.log` from the folder containing P3R.exe."
     validations:
       required: true
