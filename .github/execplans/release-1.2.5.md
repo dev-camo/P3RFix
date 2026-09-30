@@ -14,7 +14,8 @@ Players will download maintained P3RFix builds from dev-camo/P3RFix. Pushing a v
 - [x] (2026-09-30 22:30Z) Enabled GitHub Issues, previously disabled on this fork, so support links have a working destination.
 - [x] (2026-09-30 22:34Z) Removed fundraising assets; updated documentation, Reloaded-II update source, attribution, and dependency notices; pushed four focused commits to origin/main.
 - [x] (2026-09-30 22:37Z) Implemented Windows builds, version injection, pinned and verified loader download, archives, and tag-triggered publication; reviewed locally.
-- [ ] Commit focused changes, push main, and observe the Windows build complete.
+- [x] (2026-09-30 22:40Z) Committed focused automation changes, pushed main, and observed Windows build 36786715366 succeed at 93815d9; inspected both build archives and generated release notes.
+- [ ] Update deprecated Action runtimes identified by GitHub and observe the revised preflight build.
 - [ ] Tag and push 1.2.5, observe successful publication, and inspect attached archives.
 - [ ] Record final evidence and sync the completed plan.
 
@@ -28,6 +29,8 @@ GitHub Actions is enabled, and the authenticated dev-camo account has repository
 The original MIT copyright notice must remain. Third-party license terms differ, including SafetyHook's Boost Software License. Existing generated SDK provenance must remain visible.
 
 The pinned Zydis CMake build must use the same static MSVC runtime as P3RFix. Its default differs from xmake's /MT setting, so the build now explicitly sets CMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded and skips examples, tools, and tests. Both Zydis and Zycore already enable the CMake policy needed for this setting. Annotated tags may involve both a tag object and its underlying commit; verification compares the underlying commits.
+
+The first remote build passed in 1 minute 27 seconds. GitHub reported that pinned checkout/upload Actions still target deprecated Node.js 20 and were forced onto Node.js 24. Update their pins, along with the corresponding download Action, before tagging. Downloaded build archives each contain 16 files, including 11 dependency license files, and Reloaded-II metadata reports version 1.2.5 and update owner dev-camo.
 
 ## Decision Log
 
@@ -45,7 +48,7 @@ Decision: Pin Ultimate ASI Loader v9.7.4 and xmake 3.1.1, and pin third-party Ac
 ## Outcomes & Retrospective
 
 
-Repository metadata and licensing changes are committed and pushed. Automation implementation and independent review are complete. Publication remains outstanding; no release success is claimed until the remote workflow succeeds and its attachments are inspected.
+Repository metadata and licensing changes are committed and pushed. Automation implementation, independent review, and the first native Windows build are complete. Build archives contain the expected binaries, configuration, notices, and stamped Reloaded-II metadata. Publication remains outstanding while Action runtimes are modernized; no release success is claimed until the remote workflow succeeds and its attachments are inspected.
 
 ## Context and Orientation
 
@@ -106,6 +109,14 @@ Initial source evidence:
     HEAD: cc2582b36b8c3fe37a47781ea5fc98638c3f75b9
     subject: Fix aspect ratio tracking from viewport resize dimensions
 
+First Windows build evidence:
+
+    https://github.com/dev-camo/P3RFix/actions/runs/36786715366
+    source: 93815d98dabd03df6bc3478ec3ba7e8cd148ab2b
+    conclusion: success
+    P3RFix_1.2.5.zip: P3RFix.asi, P3RFix.ini, dsound.dll, notices, 11 license files
+    P3RFix_Reloaded-II.zip: P3RFix.asi, P3RFix.ini, ModConfig.json, notices, 11 license files
+
 ## Interfaces and Dependencies
 
 
@@ -114,3 +125,5 @@ Use GitHub-hosted windows-2022 MSVC, xmake 3.1.1, CMake, the repository's pinned
 Revision note (2026-09-30): Initial plan records repository findings, authorized scope, and observable release acceptance.
 
 Revision note (2026-09-30 22:37Z): Recorded completed cleanup, implemented interfaces, pinned tools, runtime compatibility, and annotated-tag handling before the first remote build.
+
+Revision note (2026-09-30 22:41Z): Recorded successful native build and inspected archives; added a runtime modernization step prompted by actual GitHub annotations.
