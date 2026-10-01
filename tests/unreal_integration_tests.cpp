@@ -53,25 +53,16 @@ struct alignas(16) Bytes
     const void* address() const { return data.data(); }
 };
 
-// During the additive prototype, console tests exercise the minimal runtime
-// independently of the temporary public SDK adapter. The final target defines
-// P3R_TEST_PUBLIC_RUNTIME so that these same fixtures exercise the shipped API.
+// Feature behavior always uses the public, shipped implementation. Only the
+// distinct registry-index boundary checks below call the private helper.
 InitStatus Initialize(RuntimeAddresses addresses)
 {
-#ifdef P3R_TEST_PUBLIC_RUNTIME
     return InitializeConsoleRuntime(addresses);
-#else
-    return detail::InitializeRuntime(addresses);
-#endif
 }
 
 ConsoleResult Enable()
 {
-#ifdef P3R_TEST_PUBLIC_RUNTIME
     return TryEnableConsole();
-#else
-    return detail::TryEnableConsole();
-#endif
 }
 
 struct Registry
@@ -331,7 +322,12 @@ void ExpectKey(Fixture& fixture, ConsoleKeyStatus expected, const std::string& k
     Require(fixture.stableScratch, "name conversion must reuse fix-owned storage");
 }
 
-#ifdef P3R_TEST_PUBLIC_RUNTIME
+void RequireNameFailureDiagnostic(const ConsoleResult& result)
+{
+    Require(result.diagnostic.find("name conversion") != std::string::npos,
+            "conversion failure diagnostic must identify failed name conversion");
+}
+
 void RequireOnlyChanges(const std::vector<Byte>& before, const void* after,
                         std::size_t firstOffset, std::size_t secondOffset)
 {
@@ -343,13 +339,11 @@ void RequireOnlyChanges(const std::vector<Byte>& before, const void* after,
         Require(field || before[i] == bytes[i], "write changed a neighboring sentinel byte");
     }
 }
-#endif
 
 using Test = std::pair<const char*, std::function<void()>>;
 std::vector<Test> Tests()
 {
     std::vector<Test> tests;
-#ifdef P3R_TEST_PUBLIC_RUNTIME
     tests.emplace_back("render reads independent offsets and RGBA16f", [] {
         Bytes<0x210> target;
         std::fill(target.data.begin(), target.data.end(), Byte{0xA5});
@@ -391,7 +385,6 @@ std::vector<Test> Tests()
         Require(SetRenderTargetSize(target.address(), 640, 480), "render cannot depend on console registry");
         Require(ReadRenderTarget(target.address())->width == 640, "independent render write must remain readable");
     });
-#endif
 
     tests.emplace_back("registry crosses 0xFFFF to 0x10000 with holes", [] {
         Fixture fixture;
@@ -689,15 +682,53 @@ std::vector<Test> Tests()
             Require(fixture.dispatchCalls == 1, "key failure must still cache successful console creation");
         });
     }
-    tests.emplace_back("invalid lookup conversion never dispatches", [] {
+    tests.emplace_back("invalid Engine metadata conversion reports lookup failure", [] {
         Fixture fixture;
         fixture.faultyName = EngineName;
         fixture.nameFault = NameFault::ChangedCapacity;
         fixture.Start();
         const auto result = Enable();
-        Require(result.status != ConsoleStatus::Enabled && !result.diagnostic.empty(), "invalid metadata name must have guarded diagnostic");
+        Require(result.status == ConsoleStatus::LookupFailed, "invalid engine metadata cannot be treated as pending startup");
+        RequireNameFailureDiagnostic(result);
         Require(fixture.dispatchCalls == 0, "invalid metadata conversion cannot dispatch");
         Require(fixture.cleanScratch && fixture.stableScratch, "failed conversion must restore scratch before further lookups");
+    });
+    tests.emplace_back("invalid GameplayStatics metadata conversion reports lookup failure", [] {
+        Fixture fixture;
+        fixture.faultyName = GameplayName;
+        fixture.nameFault = NameFault::ChangedCapacity;
+        fixture.Start();
+        const auto result = Enable();
+        Require(result.status == ConsoleStatus::LookupFailed, "invalid gameplay metadata needs lookup failure");
+        RequireNameFailureDiagnostic(result);
+        Require(fixture.dispatchCalls == 0, "invalid gameplay conversion cannot dispatch");
+        Require(Read<void*>(fixture.viewport.address(), 0x40) == fixture.oldConsole.address(), "invalid gameplay conversion must preserve viewport");
+    });
+    tests.emplace_back("invalid SpawnObject metadata conversion reports lookup failure", [] {
+        Fixture fixture;
+        fixture.faultyName = SpawnName;
+        fixture.nameFault = NameFault::ChangedCapacity;
+        fixture.Start();
+        const auto result = Enable();
+        Require(result.status == ConsoleStatus::LookupFailed, "invalid function metadata needs lookup failure");
+        RequireNameFailureDiagnostic(result);
+        Require(fixture.dispatchCalls == 0, "invalid function conversion cannot dispatch");
+        Require(Read<std::uint32_t>(fixture.spawn.address(), 0xB0) == fixture.flags, "invalid function conversion must preserve flags");
+    });
+    tests.emplace_back("invalid InputSettings metadata conversion leaves console enabled", [] {
+        Fixture fixture;
+        fixture.faultyName = InputName;
+        fixture.nameFault = NameFault::ChangedCapacity;
+        ExpectKey(fixture, ConsoleKeyStatus::NameUnavailable);
+        RequireNameFailureDiagnostic(Enable());
+        Require(fixture.dispatchCalls == 1, "input metadata conversion failure must cache console success");
+    });
+    tests.emplace_back("unrelated failed metadata names do not hide valid lookups", [] {
+        Fixture fixture;
+        fixture.faultyName = ClassName;
+        fixture.nameFault = NameFault::ChangedCapacity;
+        ExpectKey(fixture, ConsoleKeyStatus::Available, "Tilde");
+        Require(fixture.seenFunction == fixture.spawn.address(), "valid function must remain usable despite unrelated name failure");
     });
     tests.emplace_back("scratch contract violation does not poison later conversion", [] {
         Fixture fixture;

@@ -71,31 +71,31 @@
 
 #if (defined(__cpp_constexpr) && __cpp_constexpr >= 201304L)
 #define UTF_CONSTEXPR14 constexpr
-#else 
+#else
 #define UTF_CONSTEXPR14
 #endif
 
 #if (defined(__cpp_constexpr) && __cpp_constexpr >= 201603L)
 #define UTF_CONSTEXPR17 constexpr
-#else 
+#else
 #define UTF_CONSTEXPR17 inline
 #endif
 
 #if (defined(__cpp_constexpr) && __cpp_constexpr >= 201907L)
 #define UTF_CONSTEXPR20 constexpr
-#else 
+#else
 #define UTF_CONSTEXPR20 inline
 #endif
 
 #if (defined(__cpp_constexpr) && __cpp_constexpr >= 202211L)
 #define UTF_CONSTEXPR23 constexpr
-#else 
+#else
 #define UTF_CONSTEXPR23 inline
 #endif
 
 #if (defined(__cpp_constexpr) && __cpp_constexpr >= 202406L)
 #define UTF_CONSTEXPR26 constexpr
-#else 
+#else
 #define UTF_CONSTEXPR26 inline
 #endif
 
@@ -362,7 +362,7 @@ namespace UtfN
 				}
 
 			public:
-				UTF_CONSTEXPR inline 
+				UTF_CONSTEXPR inline
 					child_iterator_type begin()
 				{
 					return *static_cast<child_iterator_type*>(this);
@@ -843,7 +843,7 @@ namespace UtfN
 			this->CurrentChar = utf16_pair{ 0 };
 
 			const int CharCodepointCount = GetUtf16CharLenght(static_cast<utf_cp16_t>(*this->NextCharStartIterator));
-			
+
 			if (CharCodepointCount == 0x1)
 			{
 				// Read the only codepoint
@@ -1346,7 +1346,7 @@ namespace UtfN
 		{
 			// TODO
 		}
-		else if (ToReplaceSize < ReplacementSize) // 
+		else if (ToReplaceSize < ReplacementSize) //
 		{
 			// TODO
 		}
@@ -1384,7 +1384,7 @@ namespace UtfN
 		return Char == Other.Char;
 	}
 
-	UTF_CONSTEXPR UTF_NODISCARD 
+	UTF_CONSTEXPR UTF_NODISCARD
 		utf_cp8_t& utf_char<UtfEncodingType::Utf8>::operator[](const uint8_t Index)
 	{
 #ifdef _DEBUG
@@ -1409,7 +1409,7 @@ namespace UtfN
 	{
 		return Char != Other.Char;
 	}
-	
+
 	UTF_CONSTEXPR UTF_NODISCARD
 		utf_char8 utf_char<UtfEncodingType::Utf8>::GetAsUtf8() const noexcept
 	{
@@ -1433,7 +1433,7 @@ namespace UtfN
 	{
 		return Char;
 	}
-	
+
 	UTF_CONSTEXPR UTF_NODISCARD
 		UtfEncodingType utf_char<UtfEncodingType::Utf8>::GetEncoding() const noexcept
 	{
@@ -1486,37 +1486,37 @@ namespace UtfN
 		return Char != Other.Char;
 	}
 
-	UTF_CONSTEXPR UTF_NODISCARD 
+	UTF_CONSTEXPR UTF_NODISCARD
 		utf_char8 utf_char<UtfEncodingType::Utf16>::GetAsUtf8() const noexcept
 	{
 		return Utf16PairToUtf8Bytes(Char);
 	}
 
-	UTF_CONSTEXPR UTF_NODISCARD 
+	UTF_CONSTEXPR UTF_NODISCARD
 		utf_char16 utf_char<UtfEncodingType::Utf16>::GetAsUtf16() const noexcept
 	{
 		return Char;
 	}
 
-	UTF_CONSTEXPR UTF_NODISCARD 
+	UTF_CONSTEXPR UTF_NODISCARD
 		utf_char32 utf_char<UtfEncodingType::Utf16>::GetAsUtf32() const noexcept
 	{
 		return Utf16PairToUtf32(Char);
 	}
 
-	UTF_CONSTEXPR UTF_NODISCARD 
+	UTF_CONSTEXPR UTF_NODISCARD
 		utf16_pair utf_char<UtfEncodingType::Utf16>::Get() const noexcept
 	{
 		return Char;
 	}
 
-	UTF_CONSTEXPR UTF_NODISCARD 
+	UTF_CONSTEXPR UTF_NODISCARD
 		UtfEncodingType utf_char<UtfEncodingType::Utf16>::GetEncoding() const noexcept
 	{
 		return UtfEncodingType::Utf16;
 	}
 
-	UTF_CONSTEXPR UTF_NODISCARD 
+	UTF_CONSTEXPR UTF_NODISCARD
 		uint8_t utf_char<UtfEncodingType::Utf16>::GetNumCodepoints() const noexcept
 	{
 		return GetUtf16CharLenght(Char.Upper);

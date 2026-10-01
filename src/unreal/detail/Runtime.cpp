@@ -109,16 +109,26 @@ std::optional<std::string> ObjectName(const void* object) {
     return NameToString(ReadMemory<Name>(object, offsetof(Object, name)));
 }
 
-void* FindClass(const ObjectArray& array, std::string_view name) {
+struct LookupResult {
+    void* object = nullptr;
+    bool nameConversionFailed = false;
+};
+
+LookupResult FindClass(const ObjectArray& array, std::string_view name) {
+    LookupResult result;
     for (std::int32_t index = 0; index < array.numElements; ++index) {
         void* object = ObjectAtIndex(array, index);
         if (!HasCastFlag(object, ClassCastFlag))
             continue;
         const auto objectName = ObjectName(object);
+        if (!objectName) {
+            result.nameConversionFailed = true;
+            continue;
+        }
         if (objectName && *objectName == name)
-            return object;
+            return {object, false}; // Unrelated failed conversions do not mask a match.
     }
-    return nullptr;
+    return result;
 }
 
 bool IsSubclassOf(void* derivedClass, void* baseClass, std::int32_t objectCount) noexcept {
@@ -148,19 +158,22 @@ void* FindEngine(const ObjectArray& array, void* engineClass) noexcept {
     return nullptr;
 }
 
-void* FindSpawnFunction(const ObjectArray& array, void* gameplayClass) {
+LookupResult FindSpawnFunction(const ObjectArray& array, void* gameplayClass) {
     // The legacy GetFunction("GameplayStatics", "SpawnObject") searches the
     // named class's Children chain and verifies each field's function cast flag.
+    LookupResult result;
     void* field = ReadMemory<void*>(gameplayClass, offsetof(Struct, children));
     for (std::int32_t visited = 0; field && visited < array.numElements; ++visited) {
         if (HasCastFlag(field, FunctionCastFlag)) {
             const auto name = ObjectName(field);
             if (name && *name == "SpawnObject")
-                return field;
+                return {field, false};
+            if (!name)
+                result.nameConversionFailed = true;
         }
         field = ReadMemory<void*>(field, offsetof(Field, next));
     }
-    return nullptr;
+    return result;
 }
 
 ConsoleResult Result(ConsoleStatus status, std::string diagnostic) {
@@ -172,8 +185,15 @@ ConsoleResult Result(ConsoleStatus status, std::string diagnostic) {
 }
 
 void ReportConsoleKey(const ObjectArray& array, ConsoleResult& result) {
-    if (!runtime.inputClass)
-        runtime.inputClass = FindClass(array, "InputSettings");
+    if (!runtime.inputClass) {
+        const auto lookup = FindClass(array, "InputSettings");
+        runtime.inputClass = lookup.object;
+        if (!runtime.inputClass && lookup.nameConversionFailed) {
+            result.keyStatus = ConsoleKeyStatus::NameUnavailable;
+            result.diagnostic = "Console enabled; InputSettings class name conversion failed";
+            return;
+        }
+    }
     if (!runtime.inputClass) {
         result.keyStatus = ConsoleKeyStatus::InputSettingsUnavailable;
         result.diagnostic = "Console enabled; InputSettings class is unavailable";
@@ -252,8 +272,12 @@ ConsoleResult TryEnableConsole() {
     if (!array)
         return Result(ConsoleStatus::LookupFailed, "Object registry metadata is invalid");
 
-    if (!runtime.engineClass)
-        runtime.engineClass = FindClass(*array, "Engine");
+    if (!runtime.engineClass) {
+        const auto lookup = FindClass(*array, "Engine");
+        runtime.engineClass = lookup.object;
+        if (!runtime.engineClass && lookup.nameConversionFailed)
+            return Result(ConsoleStatus::LookupFailed, "Engine class name conversion failed");
+    }
     if (!runtime.engineClass)
         return Result(ConsoleStatus::Pending, "Engine class is not yet available");
     if (!runtime.engine)
@@ -267,12 +291,21 @@ ConsoleResult TryEnableConsole() {
     if (!viewport)
         return Result(ConsoleStatus::Pending, "Engine viewport is not yet available");
 
-    if (!runtime.gameplayClass)
-        runtime.gameplayClass = FindClass(*array, "GameplayStatics");
+    if (!runtime.gameplayClass) {
+        const auto lookup = FindClass(*array, "GameplayStatics");
+        runtime.gameplayClass = lookup.object;
+        if (!runtime.gameplayClass && lookup.nameConversionFailed)
+            return Result(ConsoleStatus::LookupFailed, "GameplayStatics class name conversion failed");
+    }
     if (!runtime.gameplayClass)
         return Result(ConsoleStatus::LookupFailed, "GameplayStatics class is unavailable");
-    if (!runtime.spawnFunction)
-        runtime.spawnFunction = FindSpawnFunction(*array, runtime.gameplayClass);
+    if (!runtime.spawnFunction) {
+        const auto lookup = FindSpawnFunction(*array, runtime.gameplayClass);
+        runtime.spawnFunction = lookup.object;
+        if (!runtime.spawnFunction && lookup.nameConversionFailed)
+            return Result(ConsoleStatus::LookupFailed,
+                          "GameplayStatics SpawnObject function name conversion failed");
+    }
     if (!runtime.spawnFunction)
         return Result(ConsoleStatus::LookupFailed, "GameplayStatics SpawnObject function is unavailable");
     void* receiver = ReadMemory<void*>(runtime.gameplayClass, offsetof(Class, defaultObject));

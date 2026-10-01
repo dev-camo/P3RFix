@@ -29,8 +29,8 @@ The loader's [MIT license](licenses/Ultimate-ASI-Loader/LICENSE) is included, al
 
 The loader also contains LINK/2012's [Unhandled Exception Tracer](https://github.com/ThirteenAG/Ultimate-ASI-Loader/blob/6b440669144c4a0bef5718ab155df160d231cd42/source/exception.hpp), whose source notice offers it for use in the public domain.
 
-## Inherited SDK and support code
+## Retained Unreal integration layouts and support
 
-The files in `src/SDK/` and related headers identify [Dumper-7](https://github.com/Encryqed/Dumper-7) as their SDK generator. `src/UnrealContainers.hpp` credits [Fischsalat's UnrealContainers](https://github.com/Fischsalat/UnrealContainers), and `src/UtfN.hpp` credits [Fischsalat's UTF-N](https://github.com/Fischsalat/UTF-N).
+The private memory layouts and lookup/dispatch operations under `src/unreal/detail/` were extracted from the original [Dumper-7](https://github.com/Encryqed/Dumper-7) SDK at P3RFix commit `e119244314f345dada02914a01a504a169bc0c16`. The full dump has been removed from the current tree. Retained array/string support in `Containers.hpp` derives from [Fischsalat's UnrealContainers](https://github.com/Fischsalat/UnrealContainers); private UTF conversion support in `UtfN.hpp` credits [Fischsalat's UTF-N](https://github.com/Fischsalat/UTF-N). Original source symbols and attribution comments accompany the extracted code.
 
 The current [UnrealContainers MIT license](https://github.com/Fischsalat/UnrealContainers/blob/80b835813ab46c0b298cf9398b22eeaaa9e10aeb/LICENSE) is copied to [licenses/UnrealContainers/LICENSE](licenses/UnrealContainers/LICENSE). Dumper-7 and UTF-N did not declare an upstream license in their repository trees when this notice was prepared on September 30, 2026; the inherited attribution comments are retained.
