@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <thread>
 
@@ -379,11 +380,23 @@ void* UTextureRenderTarget2D_PostLoad_hk(void* pRenderTarget)
     // Keep the automatic baseline at native quality, then apply the user's multiplier.
     const auto scale = p3r::render::ComputeRenderTargetScale(
         iCurrentResY, fScreenPercentage, fRenTexResUserMulti);
-    static bool bLoggedScaleFallback = false;
-    if (scale.usedFallback && !bLoggedScaleFallback) {
-        spdlog::warn("Render Texture 2D Resolution: Using safe scaling defaults for height {}, screen percentage {}, multiplier {}. Further fallback warnings are suppressed.",
-            iCurrentResY, fScreenPercentage, fRenTexResUserMulti);
-        bLoggedScaleFallback = true;
+    if (scale.usedFallback) {
+        // An unknown startup height is expected. Report invalid runtime values
+        // separately so that early startup cannot suppress a later warning.
+        static bool bLoggedInvalidScreenPercentage = false;
+        if ((!std::isfinite(fScreenPercentage) || fScreenPercentage <= 0.0f) &&
+            !bLoggedInvalidScreenPercentage) {
+            spdlog::warn("Render Texture 2D Resolution: Invalid screen percentage {}; using 100 for scaling. "
+                "Further percentage warnings are suppressed.", fScreenPercentage);
+            bLoggedInvalidScreenPercentage = true;
+        }
+        static bool bLoggedInvalidUserMultiplier = false;
+        if ((!std::isfinite(fRenTexResUserMulti) || fRenTexResUserMulti <= 0.0f) &&
+            !bLoggedInvalidUserMultiplier) {
+            spdlog::warn("Render Texture 2D Resolution: Invalid user multiplier {}; using 1 for scaling. "
+                "Further multiplier warnings are suppressed.", fRenTexResUserMulti);
+            bLoggedInvalidUserMultiplier = true;
+        }
     }
     spdlog::info("Render Texture 2D Resolution: fRenTexResMulti = {}", scale.finalMultiplier);
 
@@ -854,14 +867,16 @@ UINT __stdcall PeekMessageW_Injected(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin,
     if (packet.status == p3r::input::PacketStatus::Invalid) {
         static bool bLoggedInvalidPacket = false;
         if (!bLoggedInvalidPacket) {
-            spdlog::warn("Mouse Fix: Ignoring invalid or incomplete raw-input data. Further invalid-packet warnings are suppressed.");
+            spdlog::warn("Mouse Fix: Ignoring invalid or incomplete raw-input data. "
+                "Further invalid-packet warnings are suppressed.");
             bLoggedInvalidPacket = true;
         }
     }
     else if (packet.status == p3r::input::PacketStatus::AllocationFailed) {
         static bool bLoggedAllocationFailure = false;
         if (!bLoggedAllocationFailure) {
-            spdlog::warn("Mouse Fix: Unable to allocate raw-input storage. Further allocation warnings are suppressed.");
+            spdlog::warn("Mouse Fix: Unable to allocate raw-input storage. "
+                "Further allocation warnings are suppressed.");
             bLoggedAllocationFailure = true;
         }
     }

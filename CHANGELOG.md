@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.0] - Unreleased
+
+### Fixed
+
+- Base automatic menu render texture scaling on effective viewport height, retaining native quality below 1080p while honoring explicit user multipliers and rejecting invalid or overflowing dimensions.
+- Ignore failed, incomplete, and inconsistent raw-input reads before parsing mouse movement; preserve the existing sensitivity and accepted mouse flags.
+- Attempt independent fix installation before the optional console discovery wait on the initialization worker, including intro skipping and mouse hooks.
+
+### Maintenance
+
+- Replace the release ZIPs' separate license documents and `licenses/` directory with one complete `LICENSES` file, preserving all maintained notices and existing binary destinations. Overwrite upgrades may retain earlier notice files.
+- Run focused scaling and Windows packet-reader tests alongside the Unreal integration checks in debug and release builds.
+
 ## [1.3.0] - 2026-10-01
 
 ### Maintenance
