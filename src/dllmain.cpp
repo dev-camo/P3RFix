@@ -6,7 +6,12 @@
 #include <inipp/inipp.h>
 #include <safetyhook.hpp>
 
-#include "SDK/Engine_classes.hpp"
+#include "unreal/Integration.hpp"
+
+#include <algorithm>
+#include <chrono>
+#include <cstdint>
+#include <thread>
 
 #define spdlog_confparse(var) spdlog::info("Config Parse: {}: {}", #var, var)
 
@@ -67,7 +72,6 @@ float fHUDHeightOffset = 0.0f;
 // Variables
 int iCurrentResX = 0;
 int iCurrentResY = 0;
-SDK::UEngine* Engine = nullptr;
 bool bIntroSkipHasRun = false;
 int iFadeStatus = 0;
 float fRenTexResMulti = 1.0f;
@@ -247,43 +251,33 @@ void Configuration()
     spdlog::info("----------");
 }
 
-void UpdateOffsets()
+void InitializeUnrealIntegration()
 {
-    // GObjects
+    p3r::unreal::RuntimeAddresses addresses;
+    // Keep the inherited signatures and relative displacement locations.
     std::uint8_t* GObjectsScanResult = Memory::PatternScan(exeModule, "48 8B ?? ?? ?? ?? ?? 48 8B ?? ?? 48 8D ?? ?? EB ?? 33 ?? 8B ?? ?? C1 ??");
     if (GObjectsScanResult) {
-        spdlog::info("Offsets: GObjects: Address is {:s}+{:x}", sExeName.c_str(), GObjectsScanResult - reinterpret_cast<std::uint8_t*>(exeModule));
-        std::uint8_t* GObjectsAddr = Memory::GetAbsolute(GObjectsScanResult + 0x3);
-        SDK::Offsets::GObjects = static_cast<UC::uint32>(GObjectsAddr - reinterpret_cast<std::uint8_t*>(exeModule));
-        spdlog::info("Offsets: GObjects: 0x{:x}", SDK::Offsets::GObjects);
+        addresses.objectArray = Memory::GetAbsolute(GObjectsScanResult + 0x3);
+        spdlog::info("Unreal Integration: GObjects address = 0x{:x}", reinterpret_cast<std::uintptr_t>(addresses.objectArray));
     }
     else {
-        spdlog::error("Offsets: GObjects: Pattern scan failed.");
+        spdlog::error("Unreal Integration: GObjects pattern scan failed.");
     }
 
-    // AppendString
     std::uint8_t* AppendStringScanResult = Memory::PatternScan(exeModule, "48 89 ?? ?? ?? E8 ?? ?? ?? ?? 48 8B ?? ?? 48 85 ?? 75 ?? 48 8B ?? ?? ?? 48 8B ??");
     if (AppendStringScanResult) {
-        spdlog::info("Offsets: AppendString: Address is {:s}+{:x}", sExeName.c_str(), AppendStringScanResult - reinterpret_cast<std::uint8_t*>(exeModule));
-        std::uint8_t* AppendStringAddr = Memory::GetAbsolute(AppendStringScanResult + 0x6);
-        SDK::Offsets::AppendString = static_cast<UC::uint32>(AppendStringAddr - reinterpret_cast<std::uint8_t*>(exeModule));
-        spdlog::info("Offsets: AppendString: 0x{:x}", SDK::Offsets::AppendString);
+        addresses.appendName = Memory::GetAbsolute(AppendStringScanResult + 0x6);
+        spdlog::info("Unreal Integration: AppendString address = 0x{:x}", reinterpret_cast<std::uintptr_t>(addresses.appendName));
     }
     else {
-        spdlog::error("Offsets: AppendString: Pattern scan failed.");
+        spdlog::error("Unreal Integration: AppendString pattern scan failed.");
     }
 
-    // ProcessEvent
-    std::uint8_t* ProcessEventScanResult = Memory::PatternScan(exeModule, "40 ?? 56 57 41 ?? 41 ?? 41 ?? 41 ?? 48 81 ?? ?? ?? ?? ?? 48 8D ?? ?? ?? 48 89 ?? ?? ?? ?? ?? 48 8B ?? ?? ?? ?? ?? 48 33 ?? 48 89 ?? ?? ?? ?? ?? 8B ?? ?? 45 33 ??");
-    if (ProcessEventScanResult) {
-        spdlog::info("Offsets: ProcessEvent: Address is {:s}+{:x}", sExeName.c_str(), ProcessEventScanResult - reinterpret_cast<std::uint8_t*>(exeModule));
-        SDK::Offsets::ProcessEvent = static_cast<UC::uint32>(ProcessEventScanResult - reinterpret_cast<std::uint8_t*>(exeModule));
-        spdlog::info("Offsets: ProcessEvent: 0x{:x}", SDK::Offsets::ProcessEvent);
+    const auto status = p3r::unreal::InitializeConsoleRuntime(addresses);
+    if (status != p3r::unreal::InitStatus::Ready) {
+        spdlog::error("Unreal Integration: Console runtime unavailable: {}. Other fixes will continue.",
+            status == p3r::unreal::InitStatus::MissingObjectArray ? "missing object registry" : "missing name appender");
     }
-    else {
-        spdlog::error("Offsets: ProcessEvent: Pattern scan failed.");
-    }
-
     spdlog::info("----------");
 }
 
@@ -375,8 +369,12 @@ void Resolution()
 }
 
 SafetyHookInline UTextureRenderTarget2D_PostLoad_fn{};
-void* UTextureRenderTarget2D_PostLoad_hk(SDK::UTextureRenderTarget2D* pRenderTarget)
+void* UTextureRenderTarget2D_PostLoad_hk(void* pRenderTarget)
 {
+    const auto target = p3r::unreal::ReadRenderTarget(pRenderTarget);
+    if (!target)
+        return UTextureRenderTarget2D_PostLoad_fn.stdcall<void*>(pRenderTarget);
+
     // Calculate optimal resolution multiplier assuming target is 1080p
     // Screen percentage is only retrieved when the hook is run, meaning that on first boot we have to assume it is 100%
     float fOptimalRenTexResMulti = (iCurrentResY * (fScreenPercentage / 100)) / 1080;
@@ -395,20 +393,20 @@ void* UTextureRenderTarget2D_PostLoad_hk(SDK::UTextureRenderTarget2D* pRenderTar
     }
     spdlog::info("Render Texture 2D Resolution: fRenTexResMulti = {}", fRenTexResMulti);
 
-    spdlog::info("Render Texture 2D Resolution: Old render texture resolution = {}x{}", pRenderTarget->SizeX, pRenderTarget->SizeY);
+    spdlog::info("Render Texture 2D Resolution: Old render texture resolution = {}x{}", target->width, target->height);
 
-    pRenderTarget->SizeX = static_cast<int32_t>(pRenderTarget->SizeX * fRenTexResMulti);
-    pRenderTarget->SizeY = static_cast<int32_t>(pRenderTarget->SizeY * fRenTexResMulti);
-
-    if (pRenderTarget->RenderTargetFormat == SDK::ETextureRenderTargetFormat::RTF_RGBA16f) {
-        iRTCapX = pRenderTarget->SizeX;
-        iRTCapY = pRenderTarget->SizeY;
+    const auto width = static_cast<std::int32_t>(target->width * fRenTexResMulti);
+    const auto height = static_cast<std::int32_t>(target->height * fRenTexResMulti);
+    if (p3r::unreal::SetRenderTargetSize(pRenderTarget, width, height)) {
+        if (target->isRgba16f) {
+            iRTCapX = width;
+            iRTCapY = height;
+        }
+        spdlog::info("Render Texture 2D Resolution: New render texture resolution = {}x{}", width, height);
     }
 
-    spdlog::info("Render Texture 2D Resolution: New render texture resolution = {}x{}", pRenderTarget->SizeX, pRenderTarget->SizeY);
-
-    // Run original function
-    return UTextureRenderTarget2D_PostLoad_fn.stdcall<SDK::UTextureRenderTarget2D*>(pRenderTarget);
+    // Forward to the original function once, including unavailable targets.
+    return UTextureRenderTarget2D_PostLoad_fn.stdcall<void*>(pRenderTarget);
 }
 
 void RenderTextures()
@@ -432,10 +430,7 @@ void RenderTextures()
             static SafetyHookMid RTCaptureMidHook{};
             RTCaptureMidHook = safetyhook::create_mid(RTCaptureScanResult + 0x14,
                 [](SafetyHookContext& ctx) {
-                    if (ctx.rax) {
-                        *reinterpret_cast<int*>(ctx.rax + 0x1FC) = iRTCapX;
-                        *reinterpret_cast<int*>(ctx.rax + 0x200) = iRTCapY;
-                    }
+                    p3r::unreal::SetCaptureSize(reinterpret_cast<void*>(ctx.rax), iRTCapX, iRTCapY);
                 });
         }
         else {
@@ -445,51 +440,41 @@ void RenderTextures()
 }
 
 void EnableConsole()
-{ 
-    if (bEnableConsole) 
-    {
-        // Get GEngine
-        for (int i = 0; i < 200; ++i) { // 20s
-            Engine = SDK::UEngine::GetEngine();
+{
+    if (!bEnableConsole)
+        return;
 
-            if (Engine && Engine->ConsoleClass && Engine->GameViewport)
-                break;
+    p3r::unreal::ConsoleResult result;
+    for (int i = 0; i < 200; ++i) { // Preserve the existing 20-second startup window.
+        result = p3r::unreal::TryEnableConsole();
+        if (result.status != p3r::unreal::ConsoleStatus::Pending)
+            break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    if (result.status == p3r::unreal::ConsoleStatus::Pending) {
+        spdlog::error("Enable Console: Failed to find GEngine address after 20 seconds.");
+        return;
+    }
+    if (result.status != p3r::unreal::ConsoleStatus::Enabled) {
+        spdlog::error("Enable Console: {}", result.diagnostic);
+        return;
+    }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-
-        if (!Engine || !Engine->ConsoleClass || !Engine->GameViewport) {
-            spdlog::error("Enable Console: Failed to find GEngine address after 20 seconds.");
-            return;
-        }
-
-        spdlog::info("Enable Console: GEngine address = 0x{:x}", reinterpret_cast<uintptr_t>(Engine));
-
-        // Construct console
-        SDK::UObject* NewObject = SDK::UGameplayStatics::SpawnObject(Engine->ConsoleClass, Engine->GameViewport);
-        if (NewObject) {
-            Engine->GameViewport->ViewportConsole = static_cast<SDK::UConsole*>(NewObject);
-            spdlog::info("Enable Console: Console object constructed.");
-        }
-        else {
-            spdlog::error("Enable Console: Failed to construct console object.");
-            return;
-        }
-
-        // Get input settings
-        SDK::UInputSettings* InputSettings = SDK::UInputSettings::GetDefaultObj();
-
-        if (InputSettings) {
-            if (InputSettings->ConsoleKeys && InputSettings->ConsoleKeys.Num() > 0) {
-                spdlog::info("Enable Console: Console enabled - access it using the '{}' key.", InputSettings->ConsoleKeys[0].KeyName.ToString());
-            }
-            else {
-                spdlog::error("Enable Console: Console enabled but no console key is bound.\nAdd this to %LOCALAPPDATA%\\P3R\\Saved\\Config\\Windows\\Input.ini -\n[/Script/Engine.InputSettings]\nConsoleKeys = Tilde\nAlter the key from 'Tidle' if necessary.");
-            }
-        }
-        else {
-            spdlog::error("Enable Console: Failed to retreive input settings.");
-        }
+    spdlog::info("Enable Console: GEngine address = 0x{:x}", result.engineAddress);
+    spdlog::info("Enable Console: Console object constructed.");
+    switch (result.keyStatus) {
+    case p3r::unreal::ConsoleKeyStatus::Available:
+        spdlog::info("Enable Console: Console enabled - access it using the '{}' key.", result.keyName);
+        break;
+    case p3r::unreal::ConsoleKeyStatus::Unbound:
+        spdlog::error("Enable Console: Console enabled but no console key is bound.\nAdd this to %LOCALAPPDATA%\\P3R\\Saved\\Config\\Windows\\Input.ini -\n[/Script/Engine.InputSettings]\nConsoleKeys = Tilde\nAlter the key from 'Tilde' if necessary.");
+        break;
+    case p3r::unreal::ConsoleKeyStatus::InputSettingsUnavailable:
+        spdlog::error("Enable Console: Console enabled but input settings are unavailable.");
+        break;
+    case p3r::unreal::ConsoleKeyStatus::NameUnavailable:
+        spdlog::error("Enable Console: Console enabled but console key name conversion failed.");
+        break;
     }
 }
 
@@ -1015,7 +1000,7 @@ DWORD __stdcall Main(void*)
 {
     Logging();
     Configuration();
-    UpdateOffsets();
+    InitializeUnrealIntegration();
     Resolution();
     RenderTextures();
     EnableConsole();

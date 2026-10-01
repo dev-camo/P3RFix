@@ -17,8 +17,8 @@ The observable result is a Windows x64 `P3RFix.asi` reporting version `1.3.0` th
 - [x] (2026-10-01 05:05Z) Inspected the build, SDK include dependencies, console implementation, render texture hooks, support code, package script, and Windows workflows.
 - [x] (2026-10-01 05:05Z) Recorded the baseline: 950 SDK files, 58,516,425 bytes; 20 reachable SDK files, 13,330,488 bytes; three SDK implementation files compiled.
 - [x] (2026-10-01 05:15Z) Wrote and checked the implementation and acceptance specification for release `1.3.0` in `.agents/PLAN.md`.
-- [x] (2026-10-01 05:34Z) Milestone 1: Baseline and independent pruned MSVC release builds passed; retained exactly 20 reachable SDK files. Baseline game comparison is delegated to the user and remains pending under milestone 5.
-- [ ] Milestone 2: Put the existing SDK implementation behind the new public integration interface.
+- [x] (2026-10-01 05:32Z) Milestone 1: Baseline and independent pruned MSVC release builds passed; retained exactly 20 reachable SDK files. Baseline game comparison is delegated to the user and remains pending under milestone 5.
+- [x] (2026-10-01 05:34Z) Milestone 2: Feature callers isolated behind the public interface; temporary SDK adapter clean MSVC build and public-header-only translation unit passed. Healthy-path game observations remain pending with the final comparisons.
 - [ ] Milestone 3: Prove the minimal object lookup and console runtime using synthetic game memory.
 - [ ] Milestone 4: Switch to the minimal runtime and remove the remaining SDK and unused support files.
 - [ ] Milestone 5: Complete automated, Windows, in-game, provenance, and package validation for `1.3.0`.
@@ -26,6 +26,10 @@ The observable result is a Windows x64 `P3RFix.asi` reporting version `1.3.0` th
 The working checkout is Linux. Windows validation uses the isolated VM directory `C:\Users\camo\Projects\P3RFix-sdk-refactor` (baseline, pruned, then adapter/final snapshots), with Visual Studio 2022 Build Tools at `C:\BuildTools2022`, cl 14.44.35207, bundled CMake 3.31.6-msvc6, portable xmake 3.1.1, PowerShell 7.5.4, and Python 3.13.7. The VM exposes four Ryzen 7950X3D virtual processors and runs Windows 11 IoT Enterprise LTSC 10.0.26100. Both baseline and pruned release builds passed. No game has been run by the agent; user game evidence is required.
 
 ## Surprises & Discoveries
+
+The inherited private UTF helper requires four dependent-type `typename` additions, removal of three redundant `typename` tokens, direct `<climits>`, `<iterator>`, and `<utility>` includes, and a matched diagnostic push to compile with strict Clang. These are portability corrections, not a Unicode rewrite. Its attributed implementation remains private. Supplemental Clang checks use `-fshort-wchar` only to exercise fixtures; the Windows builds establish the supported ABI.
+
+`create_release.ps1` removes `build/package-staging/` on success. Final metadata evidence must therefore come from the Reloaded-II ZIP or a separate extraction, rather than the plan's original staged-file command. The packaging cleanup behavior stays unchanged.
 
 Execution environment (2026-10-01 05:27Z): the user supplied an MSVC VM at `ssh camo@192.168.122.141` and authorized installing or modifying required tools there; Windows sudo is enabled and the account is an administrator without a password requirement. The SSH connection succeeds. Use an isolated checkout for measurements. The user prohibits the agent from running the game: complete independent implementation/build/package checks, then hand the baseline and final artifacts and scenarios to the user for testing. In-game acceptance remains pending until actual user evidence arrives.
 
@@ -53,6 +57,10 @@ The SDK packs `UTextureRenderTarget2D` with byte packing while explicitly aligni
 
 ## Decision Log
 
+Decision: During milestone 3 compile the private console runtime tests without the temporary SDK-backed `Integration.cpp`; enable public/render tests when production switches in milestone 4. Rationale: the prototype must have zero SDK compiler dependencies; final render tests must call the shipped implementation without a duplicate test backend. Date/Author: 2026-10-01, Codex.
+
+Decision: Keep the 1.3.0 changelog entry marked Unreleased while human game acceptance is outstanding. Rationale: a dated completion or release entry would imply evidence the agent is prohibited from collecting; use the actual completion date after user verification. Date/Author: 2026-10-01, Codex.
+
 Decision: Follow the user's later execution instructions for VM setup, frequent commits, branch push, and human game testing. Rationale: those instructions supersede the preparation plan's statement that no push is included, and prohibit agent-run game checks. Do not tag, publish a release, or merge to main; push the implementation branch when ready for review. Date/Author: 2026-10-01, user/Codex.
 
 Decision: Deliver option 3, a focused integration layer, through file pruning and minimal extraction first. Rationale: this gives reviewable intermediate states while eliminating both unused files and the enormous compiled wrapper. Moving the intact dump into another folder would not satisfy the objective. Date/Author: 2026-10-01, Codex, following the user's approved direction.
@@ -73,7 +81,7 @@ Decision: Use a small native test executable with synthetic object memory and fa
 
 ## Outcomes & Retrospective
 
-Preparation was recorded in `6d3b9ac`. Milestone 1 removes 930 SDK files totaling 45,185,937 bytes plus the unused umbrella header, leaving 20 generated files totaling 13,330,488 bytes. Inventory before and after reports zero unresolved includes, and the retained contents are unchanged. The baseline and independently pruned legacy backend both compiled and linked successfully on the same MSVC VM, retaining the three original SDK source inputs and an ASI size of 1,196,544 bytes. Warm-Zydis clean fix builds took 7.0251014 seconds baseline and 7.1562145 seconds pruned; the initial cold baseline took 14.9384503 seconds. This demonstrates checkout reduction without claiming a speed or binary-size improvement. Full logs and binaries are ignored under `build/sdk-refactor/baseline-windows` and `pruned-windows`. In-game comparison remains unverified; further milestones continue independently.
+Preparation was recorded in `6d3b9ac`. Milestone 1, committed as `73a6813`, removes 930 SDK files totaling 45,185,937 bytes plus the unused umbrella header, leaving 20 generated files totaling 13,330,488 bytes. Inventory before and after reports zero unresolved includes, and the retained contents are unchanged. The baseline and independently pruned legacy backend both compiled and linked successfully on the same MSVC VM, retaining the three original SDK source inputs and an ASI size of 1,196,544 bytes. Warm-Zydis clean fix builds took 7.0251014 seconds baseline and 7.1562145 seconds pruned; the initial cold baseline took 14.9384503 seconds. This demonstrates checkout reduction without claiming a speed or binary-size improvement. Full logs and binaries are ignored under `build/sdk-refactor/baseline-windows` and `pruned-windows`. Milestone 2 preserves the retained SDK in a guarded temporary adapter while feature code uses only `Integration.hpp`, passes absolute discovery addresses, and continues unrelated fixes on unavailable runtime. The independent adapter clean MSVC release build passed in 7.5326694 seconds with warm Zydis and produced 1,199,616 bytes. A standalone public-header-only translation unit compiled with MSVC and no SDK includes. Evidence is under `build/sdk-refactor/adapter-windows`; SDK/UC references are absent from `dllmain.cpp`. The source inventory also passed six temporary fault checks for absent required inputs, legacy paths/references, excessive budget, and unresolved includes. In-game comparison remains unverified; further milestones continue independently.
 
 ## Context and Orientation
 
@@ -223,7 +231,7 @@ Final package commands, still from the Windows checkout root:
 
     ./create_release.ps1 -Version 1.3.0
     Get-Item build/P3RFix_1.3.0.zip, build/P3RFix_Reloaded-II.zip
-    Get-Content build/package-staging/reloaded/ModConfig.json
+    # Inspect ModConfig.json inside build/P3RFix_Reloaded-II.zip; staging is removed on success.
     git diff --check
     git status --short --branch
 
@@ -364,4 +372,8 @@ The final module uses the C++ standard library and retained private text helpers
 
 2026-10-01 05:27Z: Began implementation, recorded VM authorization and the user-run game-test boundary, and clarified branch push authorization. No in-game evidence exists yet.
 
-2026-10-01 05:34Z: Recorded reproducible baseline and pruning evidence, tool versions and environment, and the unchanged binary size. Milestone 1 is independently build-verified; the user must still perform baseline/final game comparisons.
+2026-10-01 05:32Z: Recorded reproducible baseline and pruning evidence, tool versions and environment, and the unchanged binary size. Milestone 1 is independently build-verified; the user must still perform baseline/final game comparisons.
+
+2026-10-01 05:33Z: Recorded milestone 1 commit, prototype/final test separation, UTF helper portability fixes, packaging cleanup discovery, and truthful unreleased changelog status.
+
+2026-10-01 05:34Z: Recorded milestone 2 clean Windows/interface evidence and inventory failure checks. The prototype is additive and will remain separate until MSVC fixture tests pass.

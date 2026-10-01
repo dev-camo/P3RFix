@@ -19,6 +19,7 @@ SOURCE = ROOT / "src"
 SDK = SOURCE / "SDK"
 INCLUDE = re.compile(r'^\s*#\s*include\s*"([^"\n]+)"', re.MULTILINE)
 COMMENTS = re.compile(r'("(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')|//[^\n]*|/\*.*?\*/', re.DOTALL)
+LUA_COMMENTS = re.compile(r'("(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')|--\[\[.*?\]\]|--[^\n]*', re.DOTALL)
 ADD_FILES = re.compile(r"\badd_files\s*\((.*?)\)", re.DOTALL)
 QUOTED = re.compile(r'["\']([^"\']+)["\']')
 OLD_SUPPORT = ("UnrealContainers.hpp", "UtfN.hpp", "PropertyFixup.hpp", "NameCollisions.inl")
@@ -42,7 +43,8 @@ def file_summary(label: str, files: set[Path]) -> None:
 
 
 def build_patterns(text: str) -> list[str]:
-    return [pattern for call in ADD_FILES.findall(active_text(text)) for pattern in QUOTED.findall(call)
+    text = LUA_COMMENTS.sub(lambda match: match.group(1) or " ", text)
+    return [pattern for call in ADD_FILES.findall(text) for pattern in QUOTED.findall(call)
             if pattern.startswith("src/")]
 
 
@@ -98,7 +100,11 @@ def minimal(build: str) -> int:
     for path in [ROOT / "xmake.lua", *sorted(SOURCE.rglob("*"))]:
         if not path.is_file():
             continue
-        text = active_text(read(path))
+        text = read(path)
+        if path.name == "xmake.lua":
+            text = LUA_COMMENTS.sub(lambda match: match.group(1) or " " + "\n" * match.group(0).count("\n"), text)
+        else:
+            text = active_text(text)
         for number, line in enumerate(text.splitlines(), 1):
             if re.search(r"\b(?:SDK|UC)\s*::|(?:src/)?SDK[\\/]|\bSDK\.hpp\b", line):
                 references.append(f"{relative(path)}:{number}: {line.strip()}")
@@ -106,12 +112,15 @@ def minimal(build: str) -> int:
                 candidate = (path.parent / include).resolve()
                 if candidate in {SOURCE / name for name in OLD_SUPPORT}:
                     references.append(f"{relative(path)}:{number}: {line.strip()}")
+            if path.name == "xmake.lua" and any(f"src/{name}" in line or f"src\\{name}" in line for name in OLD_SUPPORT):
+                references.append(f"{relative(path)}:{number}: {line.strip()}")
     references = sorted(set(references))
     print(f"Legacy references: {len(references)}")
     errors.extend(f"Legacy reference: {reference}" for reference in references)
     # The production target must list nested sources explicitly: src/*.cpp
     # does not include them. A reference only in the test target is insufficient.
-    production = re.search(r"\btarget\s*\(\s*name\s*\)(.*?)(?=\btarget\s*\(|\Z)", active_text(build), re.DOTALL)
+    build = LUA_COMMENTS.sub(lambda match: match.group(1) or " ", build)
+    production = re.search(r"\btarget\s*\(\s*name\s*\)(.*?)(?=\btarget\s*\(|\Z)", build, re.DOTALL)
     production_inputs = build_patterns(production.group(1)) if production else []
     for name in ("Integration.cpp", "detail/Runtime.cpp"):
         path = integration / name
