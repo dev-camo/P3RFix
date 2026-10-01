@@ -17,13 +17,13 @@ The observable result is a Windows x64 `P3RFix.asi` reporting version `1.3.0` th
 - [x] (2026-10-01 05:05Z) Inspected the build, SDK include dependencies, console implementation, render texture hooks, support code, package script, and Windows workflows.
 - [x] (2026-10-01 05:05Z) Recorded the baseline: 950 SDK files, 58,516,425 bytes; 20 reachable SDK files, 13,330,488 bytes; three SDK implementation files compiled.
 - [x] (2026-10-01 05:15Z) Wrote and checked the implementation and acceptance specification for release `1.3.0` in `.agents/PLAN.md`.
-- [ ] Milestone 1: Capture a reproducible baseline and remove unreachable generated files.
+- [x] (2026-10-01 05:34Z) Milestone 1: Baseline and independent pruned MSVC release builds passed; retained exactly 20 reachable SDK files. Baseline game comparison is delegated to the user and remains pending under milestone 5.
 - [ ] Milestone 2: Put the existing SDK implementation behind the new public integration interface.
 - [ ] Milestone 3: Prove the minimal object lookup and console runtime using synthetic game memory.
 - [ ] Milestone 4: Switch to the minimal runtime and remove the remaining SDK and unused support files.
 - [ ] Milestone 5: Complete automated, Windows, in-game, provenance, and package validation for `1.3.0`.
 
-The current workspace is Linux. Python 3 and Clang are available; xmake and the Windows MSVC toolchain were not found during preparation. No Windows build, automated integration test, packaging run, or in-game check has been performed for this refactor. Preserve that distinction when updating progress.
+The working checkout is Linux. Windows validation uses the isolated VM directory `C:\Users\camo\Projects\P3RFix-sdk-refactor` (baseline, pruned, then adapter/final snapshots), with Visual Studio 2022 Build Tools at `C:\BuildTools2022`, cl 14.44.35207, bundled CMake 3.31.6-msvc6, portable xmake 3.1.1, PowerShell 7.5.4, and Python 3.13.7. The VM exposes four Ryzen 7950X3D virtual processors and runs Windows 11 IoT Enterprise LTSC 10.0.26100. Both baseline and pruned release builds passed. No game has been run by the agent; user game evidence is required.
 
 ## Surprises & Discoveries
 
@@ -73,7 +73,7 @@ Decision: Use a small native test executable with synthetic object memory and fa
 
 ## Outcomes & Retrospective
 
-Preparation is complete: the dedicated branch exists and this file specifies the staged implementation. No SDK files, feature code, build inputs, or release versions have been changed during preparation. Implementation outcomes remain pending. At the end of each milestone, record its commit, the checks actually performed, observed source size and compiler input changes, and any remaining Windows or game validation. At completion, compare the results against both feature preservation and removal of the dumped SDK; unresolved in-game acceptance must remain explicitly incomplete.
+Preparation was recorded in `6d3b9ac`. Milestone 1 removes 930 SDK files totaling 45,185,937 bytes plus the unused umbrella header, leaving 20 generated files totaling 13,330,488 bytes. Inventory before and after reports zero unresolved includes, and the retained contents are unchanged. The baseline and independently pruned legacy backend both compiled and linked successfully on the same MSVC VM, retaining the three original SDK source inputs and an ASI size of 1,196,544 bytes. Warm-Zydis clean fix builds took 7.0251014 seconds baseline and 7.1562145 seconds pruned; the initial cold baseline took 14.9384503 seconds. This demonstrates checkout reduction without claiming a speed or binary-size improvement. Full logs and binaries are ignored under `build/sdk-refactor/baseline-windows` and `pruned-windows`. In-game comparison remains unverified; further milestones continue independently.
 
 ## Context and Orientation
 
@@ -363,3 +363,5 @@ The final module uses the C++ standard library and retained private text helpers
 2026-10-01: Reviewed the plan's required sections, pending implementation milestones, source-derived layout values, command examples, and version references. Confirmed the branch creation time from Git and made the initialization call explicit so the intermediate adapter and final API agree.
 
 2026-10-01 05:27Z: Began implementation, recorded VM authorization and the user-run game-test boundary, and clarified branch push authorization. No in-game evidence exists yet.
+
+2026-10-01 05:34Z: Recorded reproducible baseline and pruning evidence, tool versions and environment, and the unchanged binary size. Milestone 1 is independently build-verified; the user must still perform baseline/final game comparisons.
