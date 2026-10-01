@@ -11,6 +11,12 @@ P3RFix is a Windows x64 C++ ASI plugin for Persona 3 Reload.
 - `tests/fix_behavior_tests.cpp` runs scaling and packet-reader cases from the adjacent test headers.
 - `external/` contains pinned dependency submodules. `assets/r2-package/` holds Reloaded-II metadata; `.github/` contains workflows, issue templates, and screenshots.
 
+## Documentation & Repository Layout
+
+Keep `README.md` focused on end users: what the fix does, installation, basic configuration, known issues, and support. Put detailed user guides in `docs/`, maintainer documentation and release tooling in appropriate `.github/` subfolders, and agent plans or handoffs in `.agents/`. Link to those documents instead of expanding the README with build commands, release procedures, or runtime internals.
+
+Keep package inputs in `assets/`. Root files should be limited to the README, agent instructions and the `CLAUDE.md` symlink, project license, build entry point, and required repository configuration. See [.github/maintainers/README.md](.github/maintainers/README.md) for development and release procedures.
+
 ## Build, Test, and Development Commands
 
 Run from the repository root on Windows with Visual Studio 2022 C++ tools, Windows SDK, CMake, PowerShell 7.2+, and xmake available.
@@ -42,3 +48,5 @@ Tests use a custom C++ runner with `Require` assertions and descriptive case str
 ## Commit & Pull Request Guidelines
 
 Follow the history's short imperative subjects, such as `Fix aspect ratio tracking` or `Add minimal Unreal runtime`. Keep commits focused. PRs should describe behavior changes, link relevant issues, and report automated/manual validation. Include screenshots for visual changes and relevant `P3RFix.log` excerpts for runtime fixes. Review the Windows build workflow and package artifacts. Preserve third-party notices when changing dependencies.
+
+Use `[skip ci]` on documentation-only and other maintenance commits that do not change code or automated workflows. Allow CI when code, build scripts, or workflows change. Do not publish a new release for repository housekeeping alone; release only when behavior or another meaningful shipped change warrants it.
