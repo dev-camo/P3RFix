@@ -7,7 +7,7 @@ Close the game before editing `P3RFix.ini`, save your changes, then launch the g
 - **Standalone:** edit the file beside `P3R.exe`.
 - **Reloaded-II:** edit the file in the installed P3RFix mod folder.
 
-The [configuration supplied with the fix](../P3RFix.ini) includes the defaults and comments for every option. Use `true` or `false` for switches, and keep the section names and setting names intact.
+The [configuration supplied with the fix](../assets/P3RFix.ini) includes the defaults and comments for every option. Use `true` or `false` for switches, and keep the section names and setting names intact.
 
 ## Display and performance
 

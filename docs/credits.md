@@ -2,7 +2,7 @@
 
 [Back to the README](../README.md)
 
-P3RFix is distributed under the [MIT License](../LICENSE.md). Original copyrights and third-party attributions are preserved. Source licensing information is maintained in the [third-party notices](../THIRD_PARTY_NOTICES.md) and [license texts](../licenses/), including retained Unreal integration provenance. Release ZIPs include these complete texts in one generated `LICENSES` document.
+P3RFix is distributed under the [MIT License](../LICENSE.md). Original copyrights and third-party attributions are preserved. Source licensing information is maintained in the [third-party notices](THIRD_PARTY_NOTICES.md) and [license texts](../assets/licenses/), including retained Unreal integration provenance. Release ZIPs include these complete texts in one generated `LICENSES` document.
 
 Maintained by [dev-camo](https://github.com/dev-camo) and contributors, continuing the original work by Lyall.
 

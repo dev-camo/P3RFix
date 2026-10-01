@@ -10,7 +10,7 @@ P3RFix adds custom resolutions, ultrawide support and other quality-of-life opti
 
 Maintained by [dev-camo](https://github.com/dev-camo) and contributors, continuing the original work by Lyall.
 
-![Gameplay before and after P3RFix](.github/images/p3r_comparison.gif)
+![Gameplay before and after P3RFix](docs/images/p3r_comparison.gif)
 
 ## Install
 
@@ -44,7 +44,7 @@ See [troubleshooting](docs/troubleshooting.md) if the fix does not load or a set
 
 ## More information
 
-- [Changelog](CHANGELOG.md)
+- [Changelog](.github/release/CHANGELOG.md)
 - [License and credits](docs/credits.md)
 - [Maintainer documentation](.github/maintainers/README.md)
 

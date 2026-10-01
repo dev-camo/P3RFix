@@ -12,18 +12,18 @@ $ErrorActionPreference = 'Stop'
 # the loader binary itself.
 $LicenseSections = @(
     @{ Title = 'P3RFix license'; Path = 'LICENSE.md' }
-    @{ Title = 'Third-party attribution and provenance'; Path = 'THIRD_PARTY_NOTICES.md' }
-    @{ Title = 'Compiled dependency: inipp'; Path = 'licenses/inipp/LICENSE.txt' }
-    @{ Title = 'Compiled dependency: spdlog'; Path = 'licenses/spdlog/LICENSE' }
-    @{ Title = 'Compiled dependency: fmt'; Path = 'licenses/fmt/LICENSE' }
-    @{ Title = 'Compiled dependency: SafetyHook'; Path = 'licenses/SafetyHook/LICENSE' }
-    @{ Title = 'Compiled dependency: Zydis'; Path = 'licenses/Zydis/LICENSE' }
-    @{ Title = 'Compiled dependency: Zycore'; Path = 'licenses/Zycore/LICENSE' }
-    @{ Title = 'Retained Unreal support: UnrealContainers'; Path = 'licenses/UnrealContainers/LICENSE' }
-    @{ Title = 'Standalone loader: Ultimate ASI Loader'; Path = 'licenses/Ultimate-ASI-Loader/LICENSE' }
-    @{ Title = 'Standalone loader dependency: miniz'; Path = 'licenses/Ultimate-ASI-Loader/miniz-LICENSE' }
-    @{ Title = 'Standalone loader dependency: MinHook and Hacker Disassembler Engine'; Path = 'licenses/Ultimate-ASI-Loader/MinHook-LICENSE.txt' }
-    @{ Title = 'Standalone loader dependency: injector utility'; Path = 'licenses/Ultimate-ASI-Loader/injector-utility-LICENSE.txt' }
+    @{ Title = 'Third-party attribution and provenance'; Path = 'docs/THIRD_PARTY_NOTICES.md' }
+    @{ Title = 'Compiled dependency: inipp'; Path = 'assets/licenses/inipp/LICENSE.txt' }
+    @{ Title = 'Compiled dependency: spdlog'; Path = 'assets/licenses/spdlog/LICENSE' }
+    @{ Title = 'Compiled dependency: fmt'; Path = 'assets/licenses/fmt/LICENSE' }
+    @{ Title = 'Compiled dependency: SafetyHook'; Path = 'assets/licenses/SafetyHook/LICENSE' }
+    @{ Title = 'Compiled dependency: Zydis'; Path = 'assets/licenses/Zydis/LICENSE' }
+    @{ Title = 'Compiled dependency: Zycore'; Path = 'assets/licenses/Zycore/LICENSE' }
+    @{ Title = 'Retained Unreal support: UnrealContainers'; Path = 'assets/licenses/UnrealContainers/LICENSE' }
+    @{ Title = 'Standalone loader: Ultimate ASI Loader'; Path = 'assets/licenses/Ultimate-ASI-Loader/LICENSE' }
+    @{ Title = 'Standalone loader dependency: miniz'; Path = 'assets/licenses/Ultimate-ASI-Loader/miniz-LICENSE' }
+    @{ Title = 'Standalone loader dependency: MinHook and Hacker Disassembler Engine'; Path = 'assets/licenses/Ultimate-ASI-Loader/MinHook-LICENSE.txt' }
+    @{ Title = 'Standalone loader dependency: injector utility'; Path = 'assets/licenses/Ultimate-ASI-Loader/injector-utility-LICENSE.txt' }
 )
 
 function Read-LicenseText {
@@ -82,9 +82,9 @@ function Write-CombinedLicenseFile {
     }
 
     # Enumeration is only for completeness checking; it never determines order.
-    $LicenseDirectory = Join-Path $RepositoryRoot 'licenses'
+    $LicenseDirectory = Join-Path $RepositoryRoot 'assets/licenses'
     if (-not (Test-Path -LiteralPath $LicenseDirectory -PathType Container)) {
-        throw 'Missing license input directory: licenses'
+        throw 'Missing license input directory: assets/licenses'
     }
     $ActualPaths = [System.Collections.Generic.HashSet[string]]::new(
         [System.StringComparer]::OrdinalIgnoreCase)
@@ -97,9 +97,9 @@ function Write-CombinedLicenseFile {
         }
     }
     foreach ($InputPath in $InputPaths) {
-        if ($InputPath.StartsWith('licenses/', [System.StringComparison]::OrdinalIgnoreCase) -and
+        if ($InputPath.StartsWith('assets/licenses/', [System.StringComparison]::OrdinalIgnoreCase) -and
             -not $ActualPaths.Contains($InputPath)) {
-            throw "Manifest license input is absent from licenses inventory: $InputPath"
+            throw "Manifest license input is absent from assets/licenses inventory: $InputPath"
         }
     }
 
@@ -118,10 +118,10 @@ function Write-CombinedLicenseFile {
             "$($SectionInput.Title)$Newline" +
             "Source repository path: $($SectionInput.Path)$Newline$Newline"
         [void]$Document.Append($Heading)
-        if ($SectionInput.Path -eq 'THIRD_PARTY_NOTICES.md') {
+        if ($SectionInput.Path -eq 'docs/THIRD_PARTY_NOTICES.md') {
             [void]$Document.Append("Repository-relative links in the notice below refer to the source checkout.$Newline")
             [void]$Document.Append("The full referenced license texts follow in this same document.$Newline$Newline")
-        } elseif ($SectionInput.Path.StartsWith('licenses/Ultimate-ASI-Loader/',
+        } elseif ($SectionInput.Path.StartsWith('assets/licenses/Ultimate-ASI-Loader/',
             [System.StringComparison]::OrdinalIgnoreCase)) {
             [void]$Document.Append("This loader component is bundled only with the standalone ZIP.$Newline")
             [void]$Document.Append("The Reloaded-II ZIP does not include the standalone loader binary.$Newline$Newline")
@@ -263,7 +263,7 @@ function Assert-PackageContent {
 }
 
 if (-not $Version) {
-    throw 'Pass a release version, for example: ./create_release.ps1 -Version 1.4.0'
+    throw 'Pass a release version, for example: ./.github/scripts/create_release.ps1 -Version 1.4.0'
 }
 if (-not $IsWindows) {
     throw 'Release builds require Windows with Visual Studio 2022, CMake, and xmake.'
@@ -276,9 +276,11 @@ $LoaderArchive = 'Ultimate-ASI-Loader-NoPDB_x64.zip'
 $LoaderSha256 = 'e5860e7d9a1805267535b65749575b5e406cc6ea3325c7392189c578815045d1'
 $ZipName = "P3RFix_${Version}.zip"
 
-Push-Location $PSScriptRoot
+$RepositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
+
+Push-Location $RepositoryRoot
 try {
-    $BuildDirectory = Join-Path $PSScriptRoot 'build'
+    $BuildDirectory = Join-Path $RepositoryRoot 'build'
     $StagingDirectory = Join-Path $BuildDirectory 'package-staging'
     $DownloadDirectory = Join-Path $BuildDirectory 'release-inputs'
     $StandaloneDirectory = Join-Path $StagingDirectory 'standalone'
@@ -289,9 +291,9 @@ try {
     $ReloadedZipPath = Join-Path $BuildDirectory 'P3RFix_Reloaded-II.zip'
     $ReleaseBodyPath = Join-Path $BuildDirectory 'release_body.md'
 
-    foreach ($RequiredPath in @('P3RFix.ini', 'assets/r2-package/ModConfig.json',
-        'LICENSE.md', 'THIRD_PARTY_NOTICES.md', 'licenses',
-        'licenses/Ultimate-ASI-Loader/LICENSE', 'release_body.md')) {
+    foreach ($RequiredPath in @('assets/P3RFix.ini', 'assets/r2-package/ModConfig.json',
+        'LICENSE.md', 'docs/THIRD_PARTY_NOTICES.md', 'assets/licenses',
+        'assets/licenses/Ultimate-ASI-Loader/LICENSE', '.github/release/release_body.md')) {
         if (-not (Test-Path -LiteralPath $RequiredPath)) {
             throw "Missing release input: $RequiredPath"
         }
@@ -302,7 +304,7 @@ try {
     }
     New-Item -ItemType Directory -Path $StandaloneDirectory, $ReloadedDirectory,
         $LoaderDirectory, $DownloadDirectory -Force | Out-Null
-    Write-CombinedLicenseFile -RepositoryRoot $PSScriptRoot -Sections $LicenseSections `
+    Write-CombinedLicenseFile -RepositoryRoot $RepositoryRoot -Sections $LicenseSections `
         -DestinationPath $CombinedLicensePath
 
     foreach ($OutputPath in @($ZipPath, $ReloadedZipPath, $ReleaseBodyPath)) {
@@ -337,7 +339,7 @@ try {
     }
 
     foreach ($PackageDirectory in @($StandaloneDirectory, $ReloadedDirectory)) {
-        Copy-Item -LiteralPath $BinaryPath, 'P3RFix.ini', $CombinedLicensePath `
+        Copy-Item -LiteralPath $BinaryPath, 'assets/P3RFix.ini', $CombinedLicensePath `
             -Destination $PackageDirectory
     }
     Copy-Item -LiteralPath $LoaderDllPath -Destination (Join-Path $StandaloneDirectory 'dsound.dll')
@@ -360,10 +362,10 @@ try {
     }
     Write-Information 'Both packaged LICENSES documents match the generated reference.' -InformationAction Continue
 
-    $ReleaseBody = (Get-Content -LiteralPath 'release_body.md' -Raw).
+    $ReleaseBody = (Get-Content -LiteralPath '.github/release/release_body.md' -Raw).
         Replace('<RELEASE_ZIP_NAME>', $ZipName).Replace('<VERSION>', $Version)
-    if (Test-Path -LiteralPath 'CHANGELOG.md') {
-        $Changelog = Get-Content -LiteralPath 'CHANGELOG.md' -Raw
+    if (Test-Path -LiteralPath '.github/release/CHANGELOG.md') {
+        $Changelog = Get-Content -LiteralPath '.github/release/CHANGELOG.md' -Raw
         $EscapedVersion = [regex]::Escape($Version)
         $Changes = [regex]::Match($Changelog,
             "(?ms)^## \[$EscapedVersion\][^\r\n]*\r?\n(?<body>.*?)(?=^## |\z)")

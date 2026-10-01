@@ -7,9 +7,9 @@ P3RFix is a Windows x64 C++ ASI plugin for Persona 3 Reload.
 - `src/dllmain.cpp` handles initialization, configuration, and game hooks; `src/helper.hpp` provides shared utilities.
 - `src/unreal/Integration.hpp` exposes the focused Unreal API. Keep memory layouts and runtime internals in `src/unreal/detail/`.
 - `src/render/Scaling.*` defines render-target scaling; `src/input/RawMousePacket.*` validates Windows raw-input reads and applies the existing mouse deltas.
-- `tests/unreal_integration_tests.cpp` contains synthetic memory tests; `tools/unreal_inventory.py` audits integration sources.
+- `tests/unreal_integration_tests.cpp` contains synthetic memory tests; `.github/scripts/unreal_inventory.py` audits integration sources.
 - `tests/fix_behavior_tests.cpp` runs scaling and packet-reader cases from the adjacent test headers.
-- `external/` contains pinned dependency submodules. `assets/r2-package/` holds Reloaded-II metadata; `.github/` contains workflows, issue templates, and screenshots.
+- `external/` contains pinned dependency submodules. `assets/` holds the default INI, license inputs, and Reloaded-II metadata. `.github/` contains workflows, issue templates, maintainer guides, scripts, and release files; `docs/` holds user guides and screenshots.
 
 ## Documentation & Repository Layout
 
@@ -19,7 +19,7 @@ Keep package inputs in `assets/`. Root files should be limited to the README, ag
 
 ## Build, Test, and Development Commands
 
-Run from the repository root on Windows with Visual Studio 2022 C++ tools, Windows SDK, CMake, PowerShell 7.2+, and xmake available.
+Run from the repository root on Windows with Visual Studio 2022 C++ tools, Windows SDK, CMake, PowerShell 7.2+, Python, and xmake available.
 
 ```powershell
 git submodule update --init --recursive
@@ -29,8 +29,8 @@ xmake build -y unreal-integration-tests
 xmake run unreal-integration-tests
 xmake build -y fix-behavior-tests
 xmake run fix-behavior-tests
-python tools/unreal_inventory.py --phase minimal
-./create_release.ps1 -Version 1.4.0
+python .github/scripts/unreal_inventory.py --phase minimal
+./.github/scripts/create_release.ps1 -Version 1.4.0
 ```
 
 These commands initialize dependencies, configure a debug build, build the plugin, build/run tests, audit source boundaries, and package a release. Packaging creates standalone and Reloaded-II ZIPs under `build/`, validates all thirteen license/notice inputs, and verifies each archive's combined `LICENSES` and binary paths. The maintained source license files remain in the repository. Load the packaged fix with the game using the installation instructions in `README.md`.

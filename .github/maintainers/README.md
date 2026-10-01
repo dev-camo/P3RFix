@@ -6,18 +6,18 @@ P3RFix is a Windows x64 C++ ASI plugin for Persona 3 Reload. User installation a
 
 Use Windows with Visual Studio 2022 C++ tools, the Windows SDK, CMake, PowerShell 7.2+, Python, and xmake available on `PATH`. The build workflow pins its xmake version; see [build.yml](../workflows/build.yml).
 
-Run these commands from the repository root:
+For a new checkout, clone the repository, then package from its root:
 
 ```powershell
 git clone --recurse-submodules https://github.com/dev-camo/P3RFix.git
 cd P3RFix
 git submodule update --init --recursive
-./create_release.ps1 -Version 1.4.0
+./.github/scripts/create_release.ps1 -Version 1.4.0
 ```
 
 The script builds Windows x64 release binaries and creates `build/P3RFix_1.4.0.zip` and `build/P3RFix_Reloaded-II.zip`. It embeds the requested version in the binary and Reloaded-II metadata. Dependencies use the revisions recorded in Git; the standalone package bundles a pinned Ultimate ASI Loader download.
 
-Packaging combines all thirteen maintained license and notice documents into one `LICENSES` file. It checks both archives for complete, matching notices and the expected binary and configuration paths. Keep the [third-party notices](../../THIRD_PARTY_NOTICES.md), [license inputs](../../licenses/), and explicit script manifest consistent when changing dependencies. The standalone ZIP includes `dsound.dll`; the Reloaded-II ZIP includes `ModConfig.json` and omits that loader.
+Packaging combines all thirteen maintained license and notice documents into one `LICENSES` file. It checks both archives for complete, matching notices and the expected binary and configuration paths. Keep the [third-party notices](../../docs/THIRD_PARTY_NOTICES.md), [license inputs](../../assets/licenses/), and explicit script manifest consistent when changing dependencies. The standalone ZIP includes `dsound.dll`; the Reloaded-II ZIP includes `ModConfig.json` and omits that loader.
 
 ## Automated tests and game validation
 
@@ -34,7 +34,7 @@ xmake build -y unreal-integration-tests
 xmake run unreal-integration-tests
 xmake build -y fix-behavior-tests
 xmake run fix-behavior-tests
-python tools/unreal_inventory.py --phase minimal
+python .github/scripts/unreal_inventory.py --phase minimal
 ```
 
 The integration tests check layouts, reflected console calls, failure handling, name conversion, and render writes using independent byte fixtures. The behavior tests check scaling arithmetic, integer bounds, raw-input read failures, signed mouse deltas, and allocation failure using a controlled Windows reader.
@@ -51,7 +51,7 @@ Console lookup assumes the inherited signatures, registry layout, and virtual di
 
 The [Build packages workflow](https://github.com/dev-camo/P3RFix/actions/workflows/build.yml) tests, builds, and packages pushes and pull requests to `main`, and supports manual runs. Use `[skip ci]` on documentation-only or maintenance commits without code or automated workflow changes. Let code, build-script, and workflow changes run CI, and review the result and downloadable artifacts.
 
-Do not publish a release for repository cleanup alone. For a meaningful shipped change, update the [changelog](../../CHANGELOG.md) and [release notes template](../../release_body.md), validate the packages and game behavior, and have a human review the release commit. Push a new version tag pointing at that exact tested commit:
+Do not publish a release for repository cleanup alone. For a meaningful shipped change, update the [changelog](../release/CHANGELOG.md) and [release notes template](../release/release_body.md), validate the packages and game behavior, and have a human review the release commit. Push a new version tag pointing at that exact tested commit:
 
 ```sh
 git push origin HEAD
