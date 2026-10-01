@@ -1,0 +1,103 @@
+P3RFix 1.4.0 validation record
+Date: 2026-10-01
+Status: candidate awaiting maintainer game and installation validation
+Runtime and packaging source commit: d133132 (branch 1.4.0)
+
+Implemented scope
+-----------------
+Height-based automatic render-target scaling with native-quality floor and
+explicit user multipliers; checked Windows raw-input reads with preserved valid
+motion interpretation; independent installation before optional console wait;
+one generated complete LICENSES document in both existing package formats.
+
+Automated verification
+----------------------
+Authorized VM: camo@192.168.122.141
+Checkout: C:\Users\camo\Projects\P3RFix-1.4.0\source
+MSVC: Visual Studio 2022, 14.44.35207, Windows x64
+xmake: 3.1.1; Python: 3.13.7; portable PowerShell and VS2022 CMake
+
+In each of debug and release:
+  P3RFix.asi builds successfully using the repository's MSVC toolchain.
+  unreal-integration-tests: 69/69 checks passed.
+  fix-behavior-tests: 35/35 checks passed; compiled with /W4 /WX.
+  tools/unreal_inventory.py --phase minimal: PASS; zero legacy references.
+
+Temporary production-body harness: 8/8 checks passed. It extracts verbatim Main,
+EnableConsole, PeekMessageW_Injected, and UTextureRenderTarget2D_PostLoad_hk bodies
+from dllmain.cpp. Controlled discovery models console-disabled, ready,
+unavailable, delayed, and 200-attempt timeout cases with real 100 ms sleeps.
+Independent installers precede discovery. Message/render callbacks forward once;
+valid signed movement accumulates once, rejection leaves state unchanged, and
+real integration writes respect target/capture boundaries. This establishes
+synthetic behavior and ordering; installers and console discovery use fixtures.
+
+Production packaging invocation: ./create_release.ps1 -Version 1.4.0 succeeds.
+Licensing fixtures verify repeatable bytes, missing/empty/unlisted-input failure,
+BOM removal, Unicode and trailing-space preservation, and no-final-newline
+separation. Archive fixtures reject legacy licensing entries, incomplete text,
+an additional nested document, a missing INI, and a loader in Reloaded-II.
+All streams close before fixture cleanup. PowerShell ScriptAnalyzer reports zero
+warning/error diagnostics. New C++ sources pass clang-format verification, and
+git diff --check passes. The analyzer and development harness are temporary
+validation tools; neither adds a release dependency or player setting.
+
+Actual package evidence
+-----------------------
+Standalone ZIP root:
+  dsound.dll       1,198,304 bytes
+  LICENSES            25,315 bytes
+  P3RFix.asi       1,203,200 bytes
+  P3RFix.ini           2,876 bytes
+
+Reloaded-II ZIP root:
+  LICENSES            25,315 bytes
+  ModConfig.json         945 bytes
+  P3RFix.asi       1,203,200 bytes
+  P3RFix.ini           2,876 bytes
+
+Production ZIP assertions and an independent Python inspection verify exactly
+one complete LICENSES, all thirteen maintained inputs once in manifest order,
+UTF-8 without BOM, CRLF throughout, final newline, matching documents and ASIs,
+Windows x64 DLL identity, and absence of separate legacy notice files/tree.
+Fresh extraction into temporary directories preserves each package's mod paths.
+Comparison with the shipped 1.3.0 ZIPs verifies the same binary/configuration
+destinations and identical standalone loader bytes. INI text is unchanged; the
+baseline ZIP uses CRLF (2,954 bytes), while the Linux-sourced candidate uses LF
+(2,876). Reloaded-II metadata changes only ModVersion to 1.4.0.
+
+SHA256:
+  LICENSES
+  f953af8a4c4e88df3c592a3fbf8dbec9cb37bddba1b17633b9fa38d3e2f1aa54
+  P3RFix.asi
+  c64347fb3d0f687a44bda30a5f7e796a538a956cee7c2b51a48d56dd882f91cf
+  P3RFix_1.4.0.zip
+  7264a1b88c610f23582123a7a0203bc1f35ed50553869a7a8271c37a71608bca
+  P3RFix_Reloaded-II.zip
+  cba7ba6fbb0a43419dc516c3a5065ee5120096991e9863f97853e4ee933ae680
+
+Local evidence and handoff
+--------------------------
+/tmp/P3RFix/evidence/: Windows build/test, harness, licensing, lint, packaging,
+and independent archive-inspection transcripts.
+/tmp/P3RFix/packages/: both candidate ZIPs and generated release_body.md.
+/tmp/P3RFix/TESTING.txt: installation and before/after game checks.
+/tmp/P3RFix/RESULTS.txt: maintainer result form.
+Temporary scripts remain under /tmp/P3RFix/; VM transcripts are under the
+checkout's sibling evidence directory. The repository plan is the resume record.
+
+Remaining release gates
+-----------------------
+The agent has not executed the game. Actual rendering at below-1080p, 1440p
+ultrawide, and 2160p; equal-height aspect ratios; screen percentage and user
+undersampling; resizing/minimization; valid mouse/controller behavior; intro
+skip with console; repeated console access; actual startup logs; readable
+license presentation; and loading through the supported install methods await
+maintainer results. An unavailable executable variant must be reported as such,
+and synthetic tests cannot establish its compatibility.
+
+Retain .agents/PLAN.md until user testing and confirmation validate the release.
+Then record live evidence and any coverage limits, make the final plan-removal
+commit, and push the completed branch to origin. Human review and approval are
+required before merging into main. No tag, release publication, or merge has
+been performed as part of this candidate preparation.

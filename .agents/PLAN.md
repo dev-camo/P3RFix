@@ -36,31 +36,32 @@ Separate gameplay/menu/background frame-rate limits, new HUD/FOV controls, live 
 - [x] (2026-10-01) Read the entire plan, repository instructions, and ExecPlan skill; inspected the baseline source and submodule pins. Assigned independent scaling, packet-reader, and licensing implementation work while integrating the hooks and Windows validation centrally.
 - [x] (2026-10-01) Implemented height-based scaling and checked dimension conversion; Windows debug/release behavior tests cover native retention, explicit undersampling, invalid inputs, truncation, and integer boundaries.
 - [x] (2026-10-01) Implemented checked raw-input reading, an allocation-failure seam, and shared delta application. Independent literal Windows x64 fixtures cover two-call failures, malformed/truncated packets, signed motion, ignored flags, and unchanged accumulators/ownership on rejection.
-- [x] (2026-10-01) Moved the unchanged console initialization call after all independent installers and added the attempt-complete marker. Remaining: development harness and real startup/console observations.
+- [x] (2026-10-01) Moved the unchanged console initialization call after all independent installers and added the attempt-complete marker. The development harness is complete; real startup/console observations remain.
 - [x] (2026-10-01) Temporary Windows harness passed 8/8 using verbatim production bodies for `Main`, `EnableConsole`, and the two changed callbacks. Console-disabled, ready, unavailable, delayed, and 200-attempt timeout cases pass; message/render adapters forward once and preserve memory/delta boundaries. Remaining: maintainer startup/console observations in game.
 - [ ] Verify console-enabled and disabled startup, intro skipping, and repeated console access in game.
-- [x] (2026-10-01) Implemented the thirteen-input `LICENSES` generator and archive assertions in the existing release script. Remaining: fault fixtures and real package validation.
+- [x] (2026-10-01) Implemented the thirteen-input `LICENSES` generator and archive assertions in the existing release script; fault fixtures and real package validation are complete.
 - [x] (2026-10-01) Licensing fixtures reject missing, empty, and unlisted notices; preserve BOM/Unicode/trailing-space/no-final-newline handling; reproduce identical document bytes; and reject legacy, incomplete, duplicate-location, missing-INI, and wrong-loader archive contents. Both real ZIPs pass production assertions and an independent Python comparison of all thirteen complete normalized inputs.
 - [x] (2026-10-01) Updated README, AGENTS, third-party introduction, changelog, and release body. PowerShell ScriptAnalyzer reports zero warning/error diagnostics; selected new C++ files pass clang-format verification and the diff has no whitespace errors.
 - [x] (2026-10-01) Built the ASI with VS2022/MSVC 14.44.35207 on the authorized VM in debug and release. In each configuration: Unreal 69/69, behavior 35/35, minimal inventory PASS. Behavior sources compile with `/W4 /WX`.
 - [ ] Compare menu rendering, input, console operation, intro skipping, and ultrawide behavior in the game.
 - [x] (2026-10-01) Prepared 1.4.0 binary defaults, unchanged Reloaded-II version substitution, generated release notes, and both actual Windows archives. Fresh temporary extractions and comparison with shipped 1.3.0 archives preserve all mod-file destinations and loader bytes. Live installation validation remains outstanding.
-- [ ] Write the maintainer instructions and result form under `/tmp/P3RFix/`, recording exact build/hash identities and the pending live cases.
-- [ ] Record actual validation evidence and release outcome.
+- [x] (2026-10-01) Prepared `/tmp/P3RFix/TESTING.txt`, `/tmp/P3RFix/RESULTS.txt`, both candidate ZIPs, baseline ZIP copies, extracted inventories, and the game-results directory. Runtime/package source is commit `d133132`; ASI and document hashes are recorded in the form and persistent `docs/1.4.0-validation.txt`.
+- [x] (2026-10-01) Audited every implementation/automated requirement against current source, transcripts, and actual archive bytes. All automated gates are satisfied; game and actual installation evidence remains missing.
+- [ ] Record maintainer live validation and release outcome, resolve failures or unavailable required coverage, remove this plan in the final commit only after testing/confirmation, and push the completed branch. Human review/approval remains required before merge; publication is a subsequent release operation.
 
 ## Surprises & Discoveries
 
-The render-target guard does more than contain an obvious repeated variable. It currently reads `iCurrentResX <= 1920 || iCurrentResX <= 1080`, which is equivalent to the first comparison alone. Because the multiplier calculation uses vertical rendering resolution, a mechanical replacement of the second variable would still leave a width-dependent policy. This plan chooses an explicit vertical-resolution policy instead.
+The baseline render-target guard did more than contain an obvious repeated variable. It read `iCurrentResX <= 1920 || iCurrentResX <= 1080`, which is equivalent to the first comparison alone. Because the multiplier calculation uses vertical rendering resolution, a mechanical replacement of the second variable would still leave a width-dependent policy. This plan chooses an explicit vertical-resolution policy instead.
 
 At 2560x720 and 100% screen percentage, the old automatic multiplier is approximately 0.667 because the width-only guard does not activate. At 1920x2160 and 100%, it instead forces the automatic multiplier to 1. These are results of the examined arithmetic, not claims that the maintainer reproduced a visual defect at those resolutions.
 
-The raw-input path does not check the size-query result. It then logs an unexpected read result but continues to access the packet. Its `new BYTE[dwSize]` null check also does not handle the exception normally raised by an unsuccessful ordinary C++ allocation. Packet validation therefore needs to cover the entire read path, not only add a return after the existing log line.
+The baseline raw-input path did not check the size-query result. It logged an unexpected read result but continued to access the packet. Its `new BYTE[dwSize]` null check also did not handle the exception normally raised by an unsuccessful ordinary C++ allocation. Packet validation therefore covers the entire read path, rather than only adding a return after the old log line.
 
 The console retry loop runs on P3RFix's initialization worker. It does not itself pause the entire game thread. Its observable ordering problem is that later independent fixes are installed only after the retry finishes. Preserve that distinction in release notes.
 
-The current packaging loop in `create_release.ps1` copies `LICENSE.md`, `THIRD_PARTY_NOTICES.md`, and the entire `licenses/` directory into both release packages. The repository currently has eleven component-license files under `licenses/`, in addition to the project's own license and the provenance document. Some component files contain additional notices or exceptions: the MinHook file includes the Hacker Disassembler Engine notices, and the fmt file includes its optional binary exception. Combining only a generic MIT paragraph would lose material already present in the release inputs.
+The baseline packaging loop in `create_release.ps1` copied `LICENSE.md`, `THIRD_PARTY_NOTICES.md`, and the entire `licenses/` directory into both release packages. The repository has eleven component-license files under `licenses/`, in addition to the project's own license and the provenance document. Some component files contain additional notices or exceptions: the MinHook file includes the Hacker Disassembler Engine notices, and the fmt file includes its optional binary exception. Combining only a generic MIT paragraph would lose material already present in the release inputs.
 
-The Windows VM at `camo@192.168.122.141` accepts SSH and uses a Windows command shell. Tool locations and a dedicated validation checkout are being established. Game execution is expressly reserved for the maintainer; automated validation must stop at a concrete package and test handoff.
+The Windows VM at `camo@192.168.122.141` accepts SSH and uses a Windows command shell. Tool locations and a dedicated validation checkout have been established below. Game execution is expressly reserved for the maintainer; automated validation stops at a concrete package and test handoff.
 
 The validation tools from the prior 1.3.0 work are available at `C:\Users\camo\Projects\P3RFix-sdk-refactor\tools`: portable PowerShell, xmake 3.1.1, Python 3.13.7, and Git. CMake is bundled with `C:\BuildTools2022`, and MSVC is 14.44.35207. This release uses a separate checkout at `C:\Users\camo\Projects\P3RFix-1.4.0\source`, with transcripts under its sibling `evidence` directory. The earlier baseline/refactor checkouts are preserved.
 
@@ -102,7 +103,7 @@ The repository examined is `/home/camo/Projects/P3RFix`. On a Windows build mach
 
 `src/unreal/Integration.hpp` and `src/unreal/Integration.cpp` expose focused render-target and console operations. Private memory layouts and reflected calls live in `src/unreal/detail/`. The generated SDK is no longer a build dependency. Keep that separation. The existing independent byte fixtures in `tests/unreal_integration_tests.cpp` verify memory boundaries and console behavior; they do not currently test the scaling decision or Windows packet-reader failure paths.
 
-`xmake.lua` defines the existing ASI and `unreal-integration-tests` targets. `create_release.ps1` builds and packages a version supplied through `-Version`. The version default is also present in `xmake.lua` and as a fallback macro in `src/dllmain.cpp`. `.github/workflows/build.yml` checks inventory and runs the Unreal tests before packaging. `P3RFix.ini`, `README.md`, `CHANGELOG.md`, `release_body.md`, and `assets/r2-package/ModConfig.json` supply the player-facing configuration, documentation, and package metadata.
+`xmake.lua` defines the ASI, `unreal-integration-tests`, and new `fix-behavior-tests` targets. The behavior runner loads `tests/render_scaling_tests.hpp` and `tests/raw_mouse_packet_tests.hpp`. `create_release.ps1` builds and packages a version supplied through `-Version`. The version default is also present in `xmake.lua` and as a fallback macro in `src/dllmain.cpp`. `.github/workflows/build.yml` checks inventory and runs both test targets in debug/release before packaging. `P3RFix.ini`, `README.md`, `CHANGELOG.md`, `release_body.md`, and `assets/r2-package/ModConfig.json` supply the player-facing configuration, documentation, and package metadata.
 
 `LICENSE.md` contains P3RFix's MIT license and the original/current-maintenance copyright notices. `THIRD_PARTY_NOTICES.md` identifies compiled dependencies, the pinned standalone loader and its dependencies, and retained Unreal integration provenance. The eleven component texts under `licenses/` are the inputs to preserve in full. They remain source-repository files; the release script will combine their contents into one package document instead of copying the source directory into a player's game installation.
 
@@ -233,9 +234,19 @@ Define a reader function type compatible with the actual Windows function so tes
         MouseDelta delta;
     };
 
+    using RawInputBuffer = std::unique_ptr<std::uint32_t[]>;
+    using RawInputAllocator = RawInputBuffer (*)(std::size_t wordCount) noexcept;
+
     PacketResult ReadRelativeMousePacket(
         HRAWINPUT input,
-        RawInputReader reader) noexcept;
+        RawInputReader reader,
+        RawInputAllocator allocator = nullptr) noexcept;
+
+    void ApplyRelativeMousePacket(
+        const PacketResult& packet,
+        float& accumulatedX,
+        float& accumulatedY,
+        bool& lastValidInputWasFromMouse) noexcept;
 
 Production passes `GetRawInputData`; tests pass a controlled implementation of that same contract. An aligned array of 32-bit words is one simple way to own the requested byte capacity. Check the rounding calculation before allocating. Parse only the bytes the API reports as copied.
 
@@ -491,6 +502,8 @@ Keep implementation evidence with the release work: the final source diff, debug
 
 Captured automated evidence is under `/tmp/P3RFix/evidence/`, mirrored from `C:\Users\camo\Projects\P3RFix-1.4.0\evidence`. The candidate archives and generated release text are under `/tmp/P3RFix/packages/`. `windows-validation.txt` records both ASI builds and both sets of 69/69 integration and 35/35 behavior results; `hook-harness.txt` records 8/8 development-only observations; `license-checks.txt`, `powershell-lint.txt`, and `packaging.txt` record the packaging checks. `archive-inspection.txt` independently verifies exact inventories, all thirteen payloads, configuration/loader preservation, Reloaded-II metadata, x64 PE identity, and matching documents/binaries. No actual-game evidence exists yet.
 
+`docs/1.4.0-validation.txt` permanently records the verified candidate and remaining gates. `/tmp/P3RFix/TESTING.txt` provides concrete install/rollback instructions and the rendering, input, startup, viewport, and package cases; `/tmp/P3RFix/RESULTS.txt` records common environment/build identifiers and per-case outcomes. Baseline archives are under `/tmp/P3RFix/baseline/`, and the maintainer can store logs/images under `/tmp/P3RFix/game-results/`. The candidate runtime/packaging source commit is `d133132`; subsequent handoff/evidence commits change documentation only. The supplied Steam `P3R.exe` was read for identification (SHA256 `88244bade1988eafd8ababd66d4c2227091c4c6c253e6455c7097b1b1e5299b8`), never executed.
+
 The verified standalone inventory is `dsound.dll` (1,198,304 bytes), `LICENSES` (25,315), `P3RFix.asi` (1,203,200), and `P3RFix.ini` (2,876), all at the archive root. Reloaded-II replaces `dsound.dll` with `ModConfig.json` (945 bytes), retaining the other three paths. Both documents have SHA256 `f953af8a4c4e88df3c592a3fbf8dbec9cb37bddba1b17633b9fa38d3e2f1aa54`; the ASI hash is `c64347fb3d0f687a44bda30a5f7e796a538a956cee7c2b51a48d56dd882f91cf`. ZIP hashes are recorded in `archive-inspection.txt` and may change if packaging is repeated; compare actual bytes before handoff.
 
 The following are expected example results, not captured output:
@@ -528,7 +541,7 @@ The proposed new sources are `src/render/Scaling.hpp`, `src/render/Scaling.cpp`,
 
 Use the current C++ standard setting and MSVC ABI. ABI means the binary rules for calling functions and laying out SDK structures. In particular, keep the correct Windows calling convention for the injected reader and use the Windows SDK's own `RAWINPUTHEADER` and `RAWMOUSE` definitions.
 
-The file names and signatures above are an implementation proposal, not files already created by this documentation task. If a smaller equivalent organization fits the code better during implementation, record that decision and update every affected command and interface description rather than leaving stale names in the plan.
+The helper sources and adjacent fixture headers now exist and use the interfaces described above. Future changes to these boundaries must update the decisions, commands, and interface descriptions together so this plan remains an accurate resume record.
 
 Licensing consolidation uses only the existing PowerShell 7.2-or-newer release environment and built-in .NET text/ZIP support. The ordered generator and archive-content assertion live in `create_release.ps1`; no new external dependency, compiler, source target, or runtime DLL is required. `LICENSE.md`, `THIRD_PARTY_NOTICES.md`, and all eleven source component-license files remain the maintained inputs. `LICENSES` is generated package content, not another independent source-of-truth file to edit by hand.
 
@@ -536,7 +549,9 @@ Licensing consolidation uses only the existing PowerShell 7.2-or-newer release e
 
 All four changes are implemented. Both Windows configurations build the ASI and pass Unreal 69/69, behavior 35/35, and the minimal inventory; the development harness passes 8/8. Both real ZIPs pass licensing and destination checks, independent thirteen-input comparisons, and fresh temporary extraction. PowerShell lint reports zero warning/error diagnostics. README, repository instructions, changelog, and release text describe the new behavior and package contract; the changelog truthfully marks 1.4.0 unreleased. These results establish arithmetic, simulated API failures, synthetic adapter ordering, and archive contents; they do not establish gameplay or loader compatibility.
 
-Resume from the current branch and inspect the worktree. Local validation scripts and console output are under `/tmp/P3RFix/`; `remote.py` uploads a PowerShell script to the dedicated VM directory and runs it. Next: finish the maintainer game-test form, audit the full plan against actual evidence, commit the release preparation, and hand over the candidate archives for testing. Live comparison of rendering/input/startup/console/intro/viewport behavior, readable Windows license presentation, and loading through the supported installation methods require maintainer results. Do not run the game, delete this plan, push the branch, or claim completion before the required maintainer validation arrives. No release tag or publication has been attempted.
+The prepared candidate has reached the user-required game-test handoff. Implementation and automated/package verification are finished and committed, but release completion is unproven because actual game/installation results are missing. This is essential external validation reserved for the maintainer, not a failed build or an exhausted implementation path. The smallest input needed is the completed `/tmp/P3RFix/RESULTS.txt` with supporting startup/render logs and representative visual comparisons.
+
+Resume from the current branch and inspect the worktree, plan, persistent validation record, current package hashes, and any returned user results. Local validation scripts and console output are under `/tmp/P3RFix/`; `remote.py` uploads a PowerShell script to the dedicated VM directory and runs it. Next: reconcile each live acceptance case with the maintainer's evidence, investigate any regression, and obtain coverage for unverified required cases. Update this plan and `docs/1.4.0-validation.txt` with actual findings. After successful user validation/confirmation, remove this plan in the final commit and push branch `1.4.0` to origin. Do not run the game, delete this plan early, push before completion, merge without human approval, or infer a passed case from missing/unavailable evidence. No release tag or publication has been attempted.
 
 Revision note, 2026-10-01: renamed the original pre-v2 notes for a 1.4.0 release and expanded them into a self-contained maintenance plan at the maintainer's request. The scaling policy, failure handling, startup ordering, implementation boundaries, validation, and release criteria are now explicit; the established console, viewport, packaging, and MSVC constraints are retained.
 
@@ -545,3 +560,7 @@ Revision note, 2026-10-01: added the maintainer's fourth 1.4.0 change, replacing
 Revision note, 2026-10-01: recorded the recovered implementation state, completed Windows validation, test seams, and dedicated VM/tool paths. Split implementation from outstanding live validation so future continuations cannot mistake compilation or synthetic tests for confirmed gameplay.
 
 Revision note, 2026-10-01: recorded verified licensing fault paths, the actual package inventories and hashes, zero-diagnostic linting, and production-body development harness results. Live game and installation checks remain explicit release gates; no evidence has been inferred from compilation or archive success.
+
+Revision note, 2026-10-01: completed the concrete maintainer handoff and permanent candidate validation record. The release remains unreleased and the goal remains active pending actual game/installation results; final plan removal and branch push retain the user's explicit testing/confirmation gate.
+
+Revision note, 2026-10-01: the final pre-handoff reread reconciled stale baseline wording and progress notes with the implemented state and documented the allocator/delta application interfaces in full. This is documentation alignment only; acceptance criteria and candidate runtime/package bytes are unchanged.
