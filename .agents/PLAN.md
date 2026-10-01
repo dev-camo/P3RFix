@@ -37,12 +37,15 @@ Separate gameplay/menu/background frame-rate limits, new HUD/FOV controls, live 
 - [x] (2026-10-01) Implemented height-based scaling and checked dimension conversion; Windows debug/release behavior tests cover native retention, explicit undersampling, invalid inputs, truncation, and integer boundaries.
 - [x] (2026-10-01) Implemented checked raw-input reading, an allocation-failure seam, and shared delta application. Independent literal Windows x64 fixtures cover two-call failures, malformed/truncated packets, signed motion, ignored flags, and unchanged accumulators/ownership on rejection.
 - [x] (2026-10-01) Moved the unchanged console initialization call after all independent installers and added the attempt-complete marker. Remaining: development harness and real startup/console observations.
-- [ ] Verify console-enabled, disabled, unavailable, and delayed startup with the development harness and maintainer game tests.
+- [x] (2026-10-01) Temporary Windows harness passed 8/8 using verbatim production bodies for `Main`, `EnableConsole`, and the two changed callbacks. Console-disabled, ready, unavailable, delayed, and 200-attempt timeout cases pass; message/render adapters forward once and preserve memory/delta boundaries. Remaining: maintainer startup/console observations in game.
+- [ ] Verify console-enabled and disabled startup, intro skipping, and repeated console access in game.
 - [x] (2026-10-01) Implemented the thirteen-input `LICENSES` generator and archive assertions in the existing release script. Remaining: fault fixtures and real package validation.
-- [ ] Validate license completeness, repeatable generation, and the contents of both final ZIPs; update source and release documentation to describe the new package contract.
+- [x] (2026-10-01) Licensing fixtures reject missing, empty, and unlisted notices; preserve BOM/Unicode/trailing-space/no-final-newline handling; reproduce identical document bytes; and reject legacy, incomplete, duplicate-location, missing-INI, and wrong-loader archive contents. Both real ZIPs pass production assertions and an independent Python comparison of all thirteen complete normalized inputs.
+- [x] (2026-10-01) Updated README, AGENTS, third-party introduction, changelog, and release body. PowerShell ScriptAnalyzer reports zero warning/error diagnostics; selected new C++ files pass clang-format verification and the diff has no whitespace errors.
 - [x] (2026-10-01) Built the ASI with VS2022/MSVC 14.44.35207 on the authorized VM in debug and release. In each configuration: Unreal 69/69, behavior 35/35, minimal inventory PASS. Behavior sources compile with `/W4 /WX`.
 - [ ] Compare menu rendering, input, console operation, intro skipping, and ultrawide behavior in the game.
-- [ ] Prepare 1.4.0 metadata, notes, and both existing package formats.
+- [x] (2026-10-01) Prepared 1.4.0 binary defaults, unchanged Reloaded-II version substitution, generated release notes, and both actual Windows archives. Fresh temporary extractions and comparison with shipped 1.3.0 archives preserve all mod-file destinations and loader bytes. Live installation validation remains outstanding.
+- [ ] Write the maintainer instructions and result form under `/tmp/P3RFix/`, recording exact build/hash identities and the pending live cases.
 - [ ] Record actual validation evidence and release outcome.
 
 ## Surprises & Discoveries
@@ -63,6 +66,10 @@ The validation tools from the prior 1.3.0 work are available at `C:\Users\camo\P
 
 The first behavior-test build exposed Windows `min`/`max` macros after including the raw-input SDK header. Defining `NOMINMAX` in the test runner, as the production precompiled header already does, fixed the conflict. Both complete Windows configurations subsequently passed. SSH command length also limits large encoded PowerShell scripts; the handoff helper now uploads scripts and executes `-File` instead.
 
+The empty-notice fixture found that .NET's culture-sensitive `StartsWith` treats the encoding marker as ignorable, causing an empty string to pass that check and fail at `Substring(1)`. An ordinal comparison now produces the required path-specific empty-input error. The fixture output must also be outside the fixture's `licenses/` directory: Windows treats a root file named `LICENSES` and that source directory as the same name. Production already separates source inputs and staging output correctly.
+
+The shipped 1.3.0 INI is 2,954 bytes (CRLF) and this Linux-sourced Windows validation package's INI is 2,876 bytes (LF). An independent comparison confirms that line endings are the only difference; no section, key, value, or comment changed. The document generator normalizes all maintained notice inputs, so both packages have identical 25,315-byte `LICENSES` files regardless of input line endings.
+
 ## Decision Log
 
 Decision: target the original three behavior fixes and the subsequently requested licensing cleanup at 1.4.0 rather than a pre-v2 backlog. Rationale: the maintainer wants a concrete maintenance release and separate treatment from the 1.5.0 feature proposals. Date/author: 2026-10-01, maintainer direction recorded by Codex.
@@ -82,6 +89,10 @@ Decision: generate `LICENSES` from the existing checked-in license texts and pro
 Decision: reserve actual game runs and install-method compatibility confirmation for the maintainer, and retain this plan until that confirmation arrives. Rationale: the execution instructions prohibit the agent from running the game and require user validation before deleting the plan or completing/pushing the branch. Prepare instructions, packages, and a result form under `/tmp/P3RFix/`. Date/author: 2026-10-01, maintainer instruction recorded by Codex.
 
 Decision: expose a small nothrow raw-input allocator seam and delta-application helper, with a separate fixture header alongside the scaling cases. Rationale: allocation failure can be proven without exhausting memory, and tests exercise the shipped accumulator behavior rather than duplicating it. Date/author: 2026-10-01, Codex.
+
+Decision: rate-limit invalid screen-percentage and user-multiplier warnings independently, without treating an unknown startup height as an error. Rationale: early viewport discovery is expected and must not suppress reporting a later invalid runtime observation. Date/author: 2026-10-01, Codex.
+
+Decision: use PowerShell's information stream for packaging diagnostics and a singular internal `Assert-PackageContent` name. Rationale: keep helper return bytes separate from diagnostics and pass ScriptAnalyzer without suppression or a new release dependency. The analyzer is installed only in the VM's disposable validation tools. Date/author: 2026-10-01, Codex.
 
 ## Context and Orientation
 
@@ -478,6 +489,10 @@ Do not add generated SDK files or new memory-layout fields for the three runtime
 
 Keep implementation evidence with the release work: the final source diff, debug and release test output, inventory result, startup-order log excerpt, representative render-target sizes, actual-game comparison notes, the combined-license input manifest/hash, and both archive-content inspections.
 
+Captured automated evidence is under `/tmp/P3RFix/evidence/`, mirrored from `C:\Users\camo\Projects\P3RFix-1.4.0\evidence`. The candidate archives and generated release text are under `/tmp/P3RFix/packages/`. `windows-validation.txt` records both ASI builds and both sets of 69/69 integration and 35/35 behavior results; `hook-harness.txt` records 8/8 development-only observations; `license-checks.txt`, `powershell-lint.txt`, and `packaging.txt` record the packaging checks. `archive-inspection.txt` independently verifies exact inventories, all thirteen payloads, configuration/loader preservation, Reloaded-II metadata, x64 PE identity, and matching documents/binaries. No actual-game evidence exists yet.
+
+The verified standalone inventory is `dsound.dll` (1,198,304 bytes), `LICENSES` (25,315), `P3RFix.asi` (1,203,200), and `P3RFix.ini` (2,876), all at the archive root. Reloaded-II replaces `dsound.dll` with `ModConfig.json` (945 bytes), retaining the other three paths. Both documents have SHA256 `f953af8a4c4e88df3c592a3fbf8dbec9cb37bddba1b17633b9fa38d3e2f1aa54`; the ASI hash is `c64347fb3d0f687a44bda30a5f7e796a538a956cee7c2b51a48d56dd882f91cf`. ZIP hashes are recorded in `archive-inspection.txt` and may change if packaging is repeated; compare actual bytes before handoff.
+
 The following are expected example results, not captured output:
 
     [PASS] automatic scale retains native baseline on a wide 720p viewport
@@ -519,12 +534,14 @@ Licensing consolidation uses only the existing PowerShell 7.2-or-newer release e
 
 ## Outcomes & Retrospective
 
-The three runtime changes are implemented, version defaults target 1.4.0, and both Windows configurations build the ASI and pass Unreal 69/69, behavior 35/35, and the minimal inventory. Those results prove synthetic boundaries and arithmetic, not gameplay compatibility. The licensing generator and ZIP assertions are implemented; fault fixtures and real archives remain under validation. README, repository instructions, changelog, and release text describe the new behavior and package contract; the changelog truthfully marks 1.4.0 unreleased.
+All four changes are implemented. Both Windows configurations build the ASI and pass Unreal 69/69, behavior 35/35, and the minimal inventory; the development harness passes 8/8. Both real ZIPs pass licensing and destination checks, independent thirteen-input comparisons, and fresh temporary extraction. PowerShell lint reports zero warning/error diagnostics. README, repository instructions, changelog, and release text describe the new behavior and package contract; the changelog truthfully marks 1.4.0 unreleased. These results establish arithmetic, simulated API failures, synthetic adapter ordering, and archive contents; they do not establish gameplay or loader compatibility.
 
-Resume from the current branch and inspect the worktree. Local validation scripts and console output are under `/tmp/P3RFix/`; `remote.py` uploads a PowerShell script to the dedicated VM directory and runs it. Next: complete `license-fixtures.ps1`, run a development-only harness using the actual `Main`/console/hook bodies, package through `create_release.ps1`, retrieve and independently inspect both ZIPs, record hashes/transcripts, and write the maintainer game-test form. Do not run the game, delete this plan, push the branch, or claim completion before the required maintainer validation arrives. No release tag or publication has been attempted.
+Resume from the current branch and inspect the worktree. Local validation scripts and console output are under `/tmp/P3RFix/`; `remote.py` uploads a PowerShell script to the dedicated VM directory and runs it. Next: finish the maintainer game-test form, audit the full plan against actual evidence, commit the release preparation, and hand over the candidate archives for testing. Live comparison of rendering/input/startup/console/intro/viewport behavior, readable Windows license presentation, and loading through the supported installation methods require maintainer results. Do not run the game, delete this plan, push the branch, or claim completion before the required maintainer validation arrives. No release tag or publication has been attempted.
 
 Revision note, 2026-10-01: renamed the original pre-v2 notes for a 1.4.0 release and expanded them into a self-contained maintenance plan at the maintainer's request. The scaling policy, failure handling, startup ordering, implementation boundaries, validation, and release criteria are now explicit; the established console, viewport, packaging, and MSVC constraints are retained.
 
 Revision note, 2026-10-01: added the maintainer's fourth 1.4.0 change, replacing the release licensing folder and separate license/notice files with one generated `LICENSES` document in both existing package formats. Expanded the scope, decisions, milestones, commands, archive/content validation, upgrade behavior, recovery, and release criteria to cover complete notice preservation. Source licensing files and build tooling remain unchanged; the separate 1.5.0 plan's baseline references now inherit this packaging contract.
 
 Revision note, 2026-10-01: recorded the recovered implementation state, completed Windows validation, test seams, and dedicated VM/tool paths. Split implementation from outstanding live validation so future continuations cannot mistake compilation or synthetic tests for confirmed gameplay.
+
+Revision note, 2026-10-01: recorded verified licensing fault paths, the actual package inventories and hashes, zero-diagnostic linting, and production-body development harness results. Live game and installation checks remain explicit release gates; no evidence has been inferred from compilation or archive success.

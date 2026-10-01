@@ -1,6 +1,6 @@
 # Third-party notices
 
-P3RFix retains its original MIT license and copyright notice in [LICENSE.md](LICENSE.md), with an additional copyright notice for current maintenance. Third-party components retain their own licenses and attribution. Both release packages include this notice and the `licenses/` directory.
+P3RFix retains its original MIT license and copyright notice in [LICENSE.md](LICENSE.md), with an additional copyright notice for current maintenance. Third-party components retain their own licenses and attribution. Both release packages carry one combined `LICENSES` document containing the project license, this notice, and the complete component license texts. The linked individual license files remain maintained in the source repository.
 
 ## Components compiled into P3RFix.asi
 
