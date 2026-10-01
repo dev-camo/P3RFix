@@ -34,12 +34,13 @@ Separate gameplay/menu/background frame-rate limits, new HUD/FOV controls, live 
 - [x] (2026-10-01) Renamed and expanded the former `pre-v2-fixes.md` notes into a targeted 1.4.0 release plan.
 - [x] (2026-10-01) Added the maintainer's fourth release change: one generated `LICENSES` document in each ZIP, preserving existing notices and the source license files.
 - [x] (2026-10-01) Read the entire plan, repository instructions, and ExecPlan skill; inspected the baseline source and submodule pins. Assigned independent scaling, packet-reader, and licensing implementation work while integrating the hooks and Windows validation centrally.
-- [ ] Implement and test the automatic render-target scaling policy.
-- [ ] Implement and test checked raw-input reading without changing camera interpretation.
-- [ ] Adjust startup ordering and verify console-enabled and console-disabled startup.
-- [ ] Generate the complete combined `LICENSES` file in the existing PowerShell release script and stop copying separate licensing files/directories into either package.
+- [x] (2026-10-01) Implemented height-based scaling and checked dimension conversion; Windows debug/release behavior tests cover native retention, explicit undersampling, invalid inputs, truncation, and integer boundaries.
+- [x] (2026-10-01) Implemented checked raw-input reading, an allocation-failure seam, and shared delta application. Independent literal Windows x64 fixtures cover two-call failures, malformed/truncated packets, signed motion, ignored flags, and unchanged accumulators/ownership on rejection.
+- [x] (2026-10-01) Moved the unchanged console initialization call after all independent installers and added the attempt-complete marker. Remaining: development harness and real startup/console observations.
+- [ ] Verify console-enabled, disabled, unavailable, and delayed startup with the development harness and maintainer game tests.
+- [x] (2026-10-01) Implemented the thirteen-input `LICENSES` generator and archive assertions in the existing release script. Remaining: fault fixtures and real package validation.
 - [ ] Validate license completeness, repeatable generation, and the contents of both final ZIPs; update source and release documentation to describe the new package contract.
-- [ ] Run existing Unreal integration tests and the source inventory in Windows x64 debug and release configurations.
+- [x] (2026-10-01) Built the ASI with VS2022/MSVC 14.44.35207 on the authorized VM in debug and release. In each configuration: Unreal 69/69, behavior 35/35, minimal inventory PASS. Behavior sources compile with `/W4 /WX`.
 - [ ] Compare menu rendering, input, console operation, intro skipping, and ultrawide behavior in the game.
 - [ ] Prepare 1.4.0 metadata, notes, and both existing package formats.
 - [ ] Record actual validation evidence and release outcome.
@@ -58,6 +59,10 @@ The current packaging loop in `create_release.ps1` copies `LICENSE.md`, `THIRD_P
 
 The Windows VM at `camo@192.168.122.141` accepts SSH and uses a Windows command shell. Tool locations and a dedicated validation checkout are being established. Game execution is expressly reserved for the maintainer; automated validation must stop at a concrete package and test handoff.
 
+The validation tools from the prior 1.3.0 work are available at `C:\Users\camo\Projects\P3RFix-sdk-refactor\tools`: portable PowerShell, xmake 3.1.1, Python 3.13.7, and Git. CMake is bundled with `C:\BuildTools2022`, and MSVC is 14.44.35207. This release uses a separate checkout at `C:\Users\camo\Projects\P3RFix-1.4.0\source`, with transcripts under its sibling `evidence` directory. The earlier baseline/refactor checkouts are preserved.
+
+The first behavior-test build exposed Windows `min`/`max` macros after including the raw-input SDK header. Defining `NOMINMAX` in the test runner, as the production precompiled header already does, fixed the conflict. Both complete Windows configurations subsequently passed. SSH command length also limits large encoded PowerShell scripts; the handoff helper now uploads scripts and executes `-File` instead.
+
 ## Decision Log
 
 Decision: target the original three behavior fixes and the subsequently requested licensing cleanup at 1.4.0 rather than a pre-v2 backlog. Rationale: the maintainer wants a concrete maintenance release and separate treatment from the 1.5.0 feature proposals. Date/author: 2026-10-01, maintainer direction recorded by Codex.
@@ -75,6 +80,8 @@ Decision: use the exact extensionless filename `LICENSES` for the combined relea
 Decision: generate `LICENSES` from the existing checked-in license texts and provenance during packaging, using the existing PowerShell script, and put the same combined contents in both package formats. Rationale: keeping editable source notices avoids a second manually maintained copy of every license, while one shared generated output prevents package-specific omissions. Loader sections will explicitly state that the loader binary is bundled only with the standalone package. Date/author: 2026-10-01, proposed implementation design by Codex.
 
 Decision: reserve actual game runs and install-method compatibility confirmation for the maintainer, and retain this plan until that confirmation arrives. Rationale: the execution instructions prohibit the agent from running the game and require user validation before deleting the plan or completing/pushing the branch. Prepare instructions, packages, and a result form under `/tmp/P3RFix/`. Date/author: 2026-10-01, maintainer instruction recorded by Codex.
+
+Decision: expose a small nothrow raw-input allocator seam and delta-application helper, with a separate fixture header alongside the scaling cases. Rationale: allocation failure can be proven without exhausting memory, and tests exercise the shipped accumulator behavior rather than duplicating it. Date/author: 2026-10-01, Codex.
 
 ## Context and Orientation
 
@@ -512,10 +519,12 @@ Licensing consolidation uses only the existing PowerShell 7.2-or-newer release e
 
 ## Outcomes & Retrospective
 
-As of this revision, the outcome is a detailed targeted 1.4.0 plan preserving the original three maintenance proposals and adding the maintainer's requested single-file release licensing as Change 4. The old `pre-v2-fixes.md` filename is superseded by this document. No ASI code, build target, test target, source license text, release script, package, or published version has been changed by the documentation work.
+The three runtime changes are implemented, version defaults target 1.4.0, and both Windows configurations build the ASI and pass Unreal 69/69, behavior 35/35, and the minimal inventory. Those results prove synthetic boundaries and arithmetic, not gameplay compatibility. The licensing generator and ZIP assertions are implemented; fault fixtures and real archives remain under validation. README, repository instructions, changelog, and release text describe the new behavior and package contract; the changelog truthfully marks 1.4.0 unreleased.
 
-Implementation, automated Windows checks, game comparisons, packaging, and publication remain outstanding. Once those occur, replace this paragraph with the actual results and retained limitations. In particular, separate confirmed source arithmetic, simulated API failures, and real gameplay evidence.
+Resume from the current branch and inspect the worktree. Local validation scripts and console output are under `/tmp/P3RFix/`; `remote.py` uploads a PowerShell script to the dedicated VM directory and runs it. Next: complete `license-fixtures.ps1`, run a development-only harness using the actual `Main`/console/hook bodies, package through `create_release.ps1`, retrieve and independently inspect both ZIPs, record hashes/transcripts, and write the maintainer game-test form. Do not run the game, delete this plan, push the branch, or claim completion before the required maintainer validation arrives. No release tag or publication has been attempted.
 
 Revision note, 2026-10-01: renamed the original pre-v2 notes for a 1.4.0 release and expanded them into a self-contained maintenance plan at the maintainer's request. The scaling policy, failure handling, startup ordering, implementation boundaries, validation, and release criteria are now explicit; the established console, viewport, packaging, and MSVC constraints are retained.
 
 Revision note, 2026-10-01: added the maintainer's fourth 1.4.0 change, replacing the release licensing folder and separate license/notice files with one generated `LICENSES` document in both existing package formats. Expanded the scope, decisions, milestones, commands, archive/content validation, upgrade behavior, recovery, and release criteria to cover complete notice preservation. Source licensing files and build tooling remain unchanged; the separate 1.5.0 plan's baseline references now inherit this packaging contract.
+
+Revision note, 2026-10-01: recorded the recovered implementation state, completed Windows validation, test seams, and dedicated VM/tool paths. Split implementation from outstanding live validation so future continuations cannot mistake compilation or synthetic tests for confirmed gameplay.

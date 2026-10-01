@@ -7,6 +7,8 @@
 #include <safetyhook.hpp>
 
 #include "unreal/Integration.hpp"
+#include "input/RawMousePacket.hpp"
+#include "render/Scaling.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -20,7 +22,7 @@ HMODULE thisModule;
 
 // Fix details
 #ifndef P3RFIX_VERSION
-#define P3RFIX_VERSION "1.3.0"
+#define P3RFIX_VERSION "1.4.0"
 #endif
 std::string sFixName = "P3RFix";
 std::string sFixVersion = P3RFIX_VERSION;
@@ -74,7 +76,6 @@ int iCurrentResX = 0;
 int iCurrentResY = 0;
 bool bIntroSkipHasRun = false;
 int iFadeStatus = 0;
-float fRenTexResMulti = 1.0f;
 int iRTCapX = 1920;
 int iRTCapY = 1080;
 float fRawMouseX = 0.0f;
@@ -375,34 +376,31 @@ void* UTextureRenderTarget2D_PostLoad_hk(void* pRenderTarget)
     if (!target)
         return UTextureRenderTarget2D_PostLoad_fn.stdcall<void*>(pRenderTarget);
 
-    // Calculate optimal resolution multiplier assuming target is 1080p
-    // Screen percentage is only retrieved when the hook is run, meaning that on first boot we have to assume it is 100%
-    float fOptimalRenTexResMulti = (iCurrentResY * (fScreenPercentage / 100)) / 1080;
-
-    if (iCurrentResX <= 1920 || iCurrentResX <= 1080)
-        fOptimalRenTexResMulti = 1.0f; // Avoid lowering resolution of render targets when resolution is <1080p.
-
-    if (fRenTexResUserMulti == 1.0f)
-        fRenTexResMulti = fOptimalRenTexResMulti; // If set to 1, use the calculated optimal multiplier.
-    else
-        fRenTexResMulti = fOptimalRenTexResMulti * fRenTexResUserMulti;  // If not set to 1, then multiply on top using user defined value.
-
-    if (fRenTexResMulti < 0.25f || fRenTexResMulti > 4.0f) {
-        fRenTexResMulti = std::clamp(fRenTexResMulti, (float)0.25, (float)4);
-        spdlog::warn("Render Texture 2D Resolution: fRenTexResMulti value invalid, clamped to {}", fRenTexResMulti);
+    // Keep the automatic baseline at native quality, then apply the user's multiplier.
+    const auto scale = p3r::render::ComputeRenderTargetScale(
+        iCurrentResY, fScreenPercentage, fRenTexResUserMulti);
+    static bool bLoggedScaleFallback = false;
+    if (scale.usedFallback && !bLoggedScaleFallback) {
+        spdlog::warn("Render Texture 2D Resolution: Using safe scaling defaults for height {}, screen percentage {}, multiplier {}. Further fallback warnings are suppressed.",
+            iCurrentResY, fScreenPercentage, fRenTexResUserMulti);
+        bLoggedScaleFallback = true;
     }
-    spdlog::info("Render Texture 2D Resolution: fRenTexResMulti = {}", fRenTexResMulti);
+    spdlog::info("Render Texture 2D Resolution: fRenTexResMulti = {}", scale.finalMultiplier);
 
     spdlog::info("Render Texture 2D Resolution: Old render texture resolution = {}x{}", target->width, target->height);
 
-    const auto width = static_cast<std::int32_t>(target->width * fRenTexResMulti);
-    const auto height = static_cast<std::int32_t>(target->height * fRenTexResMulti);
-    if (p3r::unreal::SetRenderTargetSize(pRenderTarget, width, height)) {
+    const auto dimensions = p3r::render::ScaleDimensions(
+        target->width, target->height, scale.finalMultiplier);
+    if (!dimensions) {
+        spdlog::warn("Render Texture 2D Resolution: Invalid or overflowing dimensions; leaving the target unchanged.");
+    }
+    else if (p3r::unreal::SetRenderTargetSize(pRenderTarget, dimensions->width, dimensions->height)) {
         if (target->isRgba16f) {
-            iRTCapX = width;
-            iRTCapY = height;
+            iRTCapX = dimensions->width;
+            iRTCapY = dimensions->height;
         }
-        spdlog::info("Render Texture 2D Resolution: New render texture resolution = {}x{}", width, height);
+        spdlog::info("Render Texture 2D Resolution: New render texture resolution = {}x{}",
+            dimensions->width, dimensions->height);
     }
 
     // Forward to the original function once, including unavailable targets.
@@ -844,40 +842,32 @@ BOOL __stdcall RegisterRawInputDevices_Injected(PCRAWINPUTDEVICE pRawInputDevice
 }
 
 static SafetyHookInline PeekMessageWHook{};
-UINT __stdcall PeekMessageW_Injected(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg) {
-    // Alrighty boys, we need to basically write our own input handling so buckle up
+UINT __stdcall PeekMessageW_Injected(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg)
+{
+    // Observe only messages removed by the game; peeking must not accumulate motion twice.
     auto output = PeekMessageWHook.call<UINT>(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
-    if (output && wRemoveMsg & 0b1) {
-        // Only read (valid) messages on consumption so we don't accidentally double-process anything
-        // Game seems to process raw mouse input despite unregistering it (thank God) so we don't have to fight it for messages
-        if (lpMsg->message == WM_INPUT) {
-            // We've just received an input message.
-            UINT dwSize = 0;
-            GetRawInputData((HRAWINPUT)lpMsg->lParam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER)); //Get size of rawinput structure
+    if (!output || !(wRemoveMsg & PM_REMOVE) || !lpMsg || lpMsg->message != WM_INPUT)
+        return output;
 
-            LPBYTE lpb = new BYTE[dwSize];
-            if (lpb == NULL)
-                return output; // No Raw input data, abort current message injection
-            
-            if (GetRawInputData((HRAWINPUT)lpMsg->lParam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER)) != dwSize) //Actually retrieve raw input data into lpb
-                spdlog::debug("Win32 API Error: GetRawInputData does not return correct size!"); //Doubt this'll happen but might as well log it
-            
-            RAWINPUT* raw = (RAWINPUT*)lpb;
-            if (raw->header.dwType == RIM_TYPEMOUSE)
-            {
-                // We got the good stuff, mouse input data!
-                if (!raw->data.mouse.usFlags) {
-                    if (raw->data.mouse.lLastX || raw->data.mouse.lLastY) {
-                        bLastValidInputWasFromMouse = true;
-                    }
-                    // These numbers were completely just eyeballed. TODO: if you're bored you can find more "accurate" numbers
-                    fRawMouseX += raw->data.mouse.lLastX / 1200.0f;
-                    fRawMouseY += raw->data.mouse.lLastY / 1200.0f;
-                }
-            }
-            delete[] lpb;
+    const auto packet = p3r::input::ReadRelativeMousePacket(
+        reinterpret_cast<HRAWINPUT>(lpMsg->lParam), GetRawInputData);
+    if (packet.status == p3r::input::PacketStatus::Invalid) {
+        static bool bLoggedInvalidPacket = false;
+        if (!bLoggedInvalidPacket) {
+            spdlog::warn("Mouse Fix: Ignoring invalid or incomplete raw-input data. Further invalid-packet warnings are suppressed.");
+            bLoggedInvalidPacket = true;
         }
     }
+    else if (packet.status == p3r::input::PacketStatus::AllocationFailed) {
+        static bool bLoggedAllocationFailure = false;
+        if (!bLoggedAllocationFailure) {
+            spdlog::warn("Mouse Fix: Unable to allocate raw-input storage. Further allocation warnings are suppressed.");
+            bLoggedAllocationFailure = true;
+        }
+    }
+
+    p3r::input::ApplyRelativeMousePacket(
+        packet, fRawMouseX, fRawMouseY, bLastValidInputWasFromMouse);
     return output;
 }
 
@@ -1003,13 +993,14 @@ DWORD __stdcall Main(void*)
     InitializeUnrealIntegration();
     Resolution();
     RenderTextures();
-    EnableConsole();
     IntroSkip();
     AspectRatioFOV();
     HUDFix();
     Framerate();
     WindowFocus();
     MouseFix();
+    spdlog::info("Independent fix installation attempts completed.");
+    EnableConsole();
     return true;
 }
 
