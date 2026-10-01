@@ -2,6 +2,16 @@
 
 P3RFix is a Windows x64 C++ ASI plugin for Persona 3 Reload. User installation and configuration belong in the [README](../../README.md) and [user guides](../../docs/). Repository instructions for coding agents are in [AGENTS.md](../../AGENTS.md); agent plans and handoffs belong in `.agents/`.
 
+## Repository layout
+
+- `.github/scripts/`: packaging and source-inventory tools. Both resolve the repository from their own location; generated packages and release notes go in root `build/`.
+- `.github/release/`: changelog and release notes template.
+- `.github/maintainers/`: development and release documentation.
+- `assets/`: default `P3RFix.ini`, maintained license inputs, and Reloaded-II metadata. The packager places configuration and metadata at the ZIP root and combines licenses into `LICENSES`.
+- `docs/`: detailed user guides, screenshots, credits, and third-party notices.
+
+Keep the root README focused on installation and use. Document runtime internals and release procedures here, and keep agent plans or handoffs in `.agents/`.
+
 ## Build and package
 
 Use Windows with Visual Studio 2022 C++ tools, the Windows SDK, CMake, PowerShell 7.2+, Python, and xmake available on `PATH`. The build workflow pins its xmake version; see [build.yml](../workflows/build.yml).
