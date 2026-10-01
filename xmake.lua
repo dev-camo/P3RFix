@@ -53,3 +53,16 @@ target(name)
         add_cxflags("/utf-8", "/GL")
         add_ldflags("/LTCG", "/OPT:REF", "/OPT:ICF")
     end
+
+-- Synthetic memory tests have no game, hooking, logging, or Zydis dependency.
+target("unreal-integration-tests")
+    set_kind("binary")
+    set_default(false)
+    add_files("tests/unreal_integration_tests.cpp", "src/unreal/detail/Runtime.cpp")
+    add_includedirs("src")
+    if is_plat("windows") then
+        set_toolchains("msvc")
+        set_runtimes("MT")
+        add_cxflags("/utf-8", "/GL")
+        add_ldflags("/LTCG", "/OPT:REF", "/OPT:ICF")
+    end
