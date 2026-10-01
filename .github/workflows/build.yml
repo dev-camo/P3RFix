@@ -75,7 +75,7 @@ jobs:
           python tools/unreal_inventory.py --phase minimal
           if ($LASTEXITCODE -ne 0) { throw 'Unreal source inventory failed.' }
 
-      - name: Test Unreal integration in debug and release
+      - name: Test Unreal integration and fix behavior in debug and release
         env:
           BUILD_VERSION: ${{ steps.metadata.outputs.version }}
         run: |
@@ -86,6 +86,10 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "Unreal $Mode test build failed." }
             & xmake run unreal-integration-tests
             if ($LASTEXITCODE -ne 0) { throw "Unreal $Mode tests failed." }
+            & xmake build -y -v fix-behavior-tests
+            if ($LASTEXITCODE -ne 0) { throw "Fix behavior $Mode test build failed." }
+            & xmake run fix-behavior-tests
+            if ($LASTEXITCODE -ne 0) { throw "Fix behavior $Mode tests failed." }
           }
 
       - name: Build and package Windows x64 release

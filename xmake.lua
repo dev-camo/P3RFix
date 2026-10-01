@@ -6,7 +6,7 @@ set_languages("cxxlatest", "clatest")
 set_optimize("smallest")
 
 option("fix_version")
-    set_default("1.3.0")
+    set_default("1.4.0")
     set_showmenu(true)
     set_description("Version embedded in P3RFix (set from the release tag in CI)")
 option_end()
@@ -36,7 +36,9 @@ target(name)
     set_kind("shared")
     set_prefixname("")
     set_extension(".asi")
-    add_files("src/*.cpp", "external/safetyhook/src/*.cpp", "src/unreal/Integration.cpp", "src/unreal/detail/Runtime.cpp")
+    add_files("src/*.cpp", "external/safetyhook/src/*.cpp",
+        "src/unreal/Integration.cpp", "src/unreal/detail/Runtime.cpp",
+        "src/render/Scaling.cpp", "src/input/RawMousePacket.cpp")
     add_syslinks("user32")
     add_deps("zydis") 
     on_load(function (target)
@@ -64,5 +66,20 @@ target("unreal-integration-tests")
         set_toolchains("msvc")
         set_runtimes("MT")
         add_cxflags("/utf-8", "/GL")
+        add_ldflags("/LTCG", "/OPT:REF", "/OPT:ICF")
+    end
+
+-- Exercise the shipped scaling and Windows packet-reader boundaries without the game.
+target("fix-behavior-tests")
+    set_kind("binary")
+    set_default(false)
+    add_files("tests/fix_behavior_tests.cpp", "src/render/Scaling.cpp",
+        "src/input/RawMousePacket.cpp")
+    add_includedirs("src")
+    add_syslinks("user32")
+    if is_plat("windows") then
+        set_toolchains("msvc")
+        set_runtimes("MT")
+        add_cxflags("/utf-8", "/W4", "/WX", "/GL")
         add_ldflags("/LTCG", "/OPT:REF", "/OPT:ICF")
     end
