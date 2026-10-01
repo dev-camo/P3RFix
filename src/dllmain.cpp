@@ -20,7 +20,7 @@ HMODULE thisModule;
 
 // Fix details
 #ifndef P3RFIX_VERSION
-#define P3RFIX_VERSION "1.2.5"
+#define P3RFIX_VERSION "1.3.0"
 #endif
 std::string sFixName = "P3RFix";
 std::string sFixVersion = P3RFIX_VERSION;

@@ -6,7 +6,7 @@ Execution is underway on branch `refactor/minimal-unreal-integration`; this file
 
 ## Purpose / Big Picture
 
-P3RFix should keep enabling the game's developer console and increasing the resolution of menu render textures while carrying only the game integration code those features need. Today the repository contains a generated description of much of the game, although the fix accesses only a few engine objects, fields, and functions. A smaller, project-owned interface will let maintainers understand these dependencies, review game compatibility changes, and build the fix without compiling thousands of unused engine wrappers.
+P3RFix should keep enabling the game's developer console and increasing the resolution of menu render textures while carrying only the game integration code those features need. At the preparation baseline the repository contained a generated description of much of the game, although the fix accesses only a few engine objects, fields, and functions. A smaller, project-owned interface will let maintainers understand these dependencies, review game compatibility changes, and build the fix without compiling thousands of unused engine wrappers.
 
 The observable result is a Windows x64 `P3RFix.asi` reporting version `1.3.0` that preserves the existing console, render texture, and unrelated fix behavior. A player can enable the console, press the configured key, and use it; at higher resolutions, menu character models continue using the scaled render textures. A maintainer can trace every game memory access used by these two features to a small private directory, build both release packages, and demonstrate that the full SDK is absent from the current source tree and compiler inputs. Record source reduction and build measurements; do not promise a particular binary size or build speed improvement without measuring it.
 
@@ -22,11 +22,14 @@ The observable result is a Windows x64 `P3RFix.asi` reporting version `1.3.0` th
 - [x] (2026-10-01 05:35Z) Milestone 3: Minimal prototype MSVC x64 debug and release tests both passed 60/60 named checks; compiler inputs are only the fixture source and private runtime. Prototype was verified before the production switch; final tests now always call the real public implementation.
 - [x] (2026-10-01 05:42Z) Milestone 4 implementation and structural verification: Production uses the minimal runtime; all SDK/obsolete support removed; both MSVC configurations build and pass 69/69 public checks; inventory and actual compiler dependency audits pass.
 - [ ] Milestone 4 live behavior acceptance: User must confirm console/render behavior and name scratch contract against the baseline; consolidated scenarios are required in milestone 5.
-- [ ] Milestone 5: Complete automated, Windows, in-game, provenance, and package validation for `1.3.0`.
+- [x] (2026-10-01 05:51Z) Milestone 5 independent implementation/verification: Version defaults/examples/CI/notices updated; both 1.3.0 packages built and inspected with MSVC 2022; source/default/embedded versions verified; full diff and YAML syntax checks pass.
+- [ ] Milestone 5 live acceptance and completion date: User must provide baseline/final game identity, console/key/render/feature-independence/regression outcomes and logs, including actual startup version. Keep 1.3.0 Unreleased until that evidence is recorded.
 
 The working checkout is Linux. Windows validation uses the isolated VM directory `C:\Users\camo\Projects\P3RFix-sdk-refactor` (baseline, pruned, then adapter/final snapshots), with Visual Studio 2022 Build Tools at `C:\BuildTools2022`, cl 14.44.35207, bundled CMake 3.31.6-msvc6, portable xmake 3.1.1, PowerShell 7.5.4, and Python 3.13.7. The VM exposes four Ryzen 7950X3D virtual processors and runs Windows 11 IoT Enterprise LTSC 10.0.26100. Baseline, pruned, adapter, and final debug/release builds passed; both final test configurations pass 69/69 checks. No game has been run by the agent; user game evidence is required.
 
 ## Surprises & Discoveries
+
+The VM also has Visual Studio 2026. The unchanged packaging script's reconfiguration initially selected it despite previous project selection of VS 2022. Recovery used an isolated `XMAKE_GLOBALDIR`, `xmake g -y --vs=2022`, and a fresh `xmake f -c` configuration to remove the cached 2026 choice. Final package compiler/version assertions prove VS 2022 (cl 14.44.35207) before and after packaging. The initial 2026 output is diagnostic only and was replaced by the verified 2022 artifacts. Source/build configuration and dependencies were not changed to solve this environment issue.
 
 During final review, the prototype's failed metadata name conversions were skipped and could return a misleading `Pending` engine lookup. The final runtime tracks conversion failures per lookup: absent target metadata after failed conversion reports `LookupFailed` with a concrete diagnostic, and failed InputSettings metadata conversion leaves the console `Enabled` with `NameUnavailable`. Tests now assert those statuses/diagnostics and prove unrelated failed names do not hide a healthy match. The final suite has 69 checks; both MSVC debug and release runs pass.
 
@@ -38,7 +41,7 @@ Execution environment (2026-10-01 05:27Z): the user supplied an MSVC VM at `ssh 
 
 The large dump is mostly outside the build, but the parts inside the build are still substantial. Following quoted project-local includes from `src/dllmain.cpp` and the three SDK source files reaches 20 SDK files totaling 13,330,488 bytes. The whole `src/SDK/` directory has 950 files totaling 58,516,425 bytes. Removing unreachable files therefore removes 930 files and 45,185,937 bytes, approximately 77% of the dump. These figures exclude the top-level generated support headers.
 
-    xmake.lua currently compiles:
+    Baseline xmake.lua compiled:
         src/SDK/Engine_functions.cpp
         src/SDK/CoreUObject_functions.cpp
         src/SDK/Basic.cpp
@@ -86,15 +89,22 @@ Decision: Use a small native test executable with synthetic object memory and fa
 
 ## Outcomes & Retrospective
 
-Preparation was recorded in `6d3b9ac`. Milestone 1, committed as `73a6813`, removes 930 SDK files totaling 45,185,937 bytes plus the unused umbrella header, leaving 20 generated files totaling 13,330,488 bytes. Inventory before and after reports zero unresolved includes, and the retained contents are unchanged. The baseline and independently pruned legacy backend both compiled and linked successfully on the same MSVC VM, retaining the three original SDK source inputs and an ASI size of 1,196,544 bytes. Warm-Zydis clean fix builds took 7.0251014 seconds baseline and 7.1562145 seconds pruned; the initial cold baseline took 14.9384503 seconds. This demonstrates checkout reduction without claiming a speed or binary-size improvement. Full logs and binaries are ignored under `build/sdk-refactor/baseline-windows` and `pruned-windows`. 
+Preparation was recorded in `6d3b9ac`. Milestone 1, committed as `73a6813`, removes 930 SDK files totaling 45,185,937 bytes plus the unused umbrella header, leaving 20 generated files totaling 13,330,488 bytes. Inventory before and after reports zero unresolved includes, and the retained contents are unchanged. The baseline and independently pruned legacy backend both compiled and linked successfully on the same MSVC VM, retaining the three original SDK source inputs and an ASI size of 1,196,544 bytes. Warm-Zydis clean fix builds took 7.0251014 seconds baseline and 7.1562145 seconds pruned; the initial cold baseline took 14.9384503 seconds. This demonstrates checkout reduction without claiming a speed or binary-size improvement. Full logs and binaries are ignored under `build/sdk-refactor/baseline-windows` and `pruned-windows`.
 
-Milestone 2, committed as `594cc1a`, preserves the retained SDK in a guarded temporary adapter while feature code uses only `Integration.hpp`, passes absolute discovery addresses, and continues unrelated fixes on unavailable runtime. The independent adapter clean MSVC release build passed in 7.5326694 seconds with warm Zydis and produced 1,199,616 bytes. A standalone public-header-only translation unit compiled with MSVC and no SDK includes. Evidence is under `build/sdk-refactor/adapter-windows`; SDK/UC references are absent from `dllmain.cpp`. The source inventory also passed six temporary fault checks for absent required inputs, legacy paths/references, excessive budget, and unresolved includes. 
+Milestone 2, committed as `594cc1a`, preserves the retained SDK in a guarded temporary adapter while feature code uses only `Integration.hpp`, passes absolute discovery addresses, and continues unrelated fixes on unavailable runtime. The independent adapter clean MSVC release build passed in 7.5326694 seconds with warm Zydis and produced 1,199,616 bytes. A standalone public-header-only translation unit compiled with MSVC and no SDK includes. Evidence is under `build/sdk-refactor/adapter-windows`; SDK/UC references are absent from `dllmain.cpp`. The source inventory also passed six temporary fault checks for absent required inputs, legacy paths/references, excessive budget, and unresolved includes.
 
-Milestone 3, committed as `2975e4e`, adds five private runtime/support files totaling 75,443 bytes and the nondefault standalone fixture target. MSVC debug and release runs each observed `60/60 checks passed`, with no SDK, hooking, logging, Zydis, or game dependency. Independent byte fixtures verify guarded/pending lookup, registry holes and chunk transitions, exact spawn receiver/parameters/flags, flag restoration after a thrown fake callback, cache resets and repeated success, and Unicode/string contract handling. The extracted healthy semantics were reviewed against the retained original symbols. Logs are under `build/sdk-refactor/prototype-windows`. MSVC dependency-cache audits for baseline and adapter contain exactly the same 20 retained SDK headers/sources and zero deleted paths; evidence is `build/sdk-refactor/compiler-dependency-audit.log`. 
+Milestone 3, committed as `2975e4e`, adds five private runtime/support files totaling 75,443 bytes and the nondefault standalone fixture target. MSVC debug and release runs each observed `60/60 checks passed`, with no SDK, hooking, logging, Zydis, or game dependency. Independent byte fixtures verify guarded/pending lookup, registry holes and chunk transitions, exact spawn receiver/parameters/flags, flag restoration after a thrown fake callback, cache resets and repeated success, and Unicode/string contract handling. The extracted healthy semantics were reviewed against the retained original symbols. Logs are under `build/sdk-refactor/prototype-windows`. MSVC dependency-cache audits for baseline and adapter contain exactly the same 20 retained SDK headers/sources and zero deleted paths; evidence is `build/sdk-refactor/compiler-dependency-audit.log`.
 
-Milestone 4 switches production and final tests to the same minimal implementation. All 950 SDK files, the umbrella, and four obsolete top-level support headers are absent from the current tree. Inventory reports seven integration files totaling 79,466 bytes (below 262,144), zero active legacy references, and PASS. MSVC debug and release public suites each pass 69/69 checks, including independent render/capture byte-write sentinels and conversion diagnostic regressions. Both clean DLL builds pass; debug produces 2,008,064 bytes in 5.8213837 seconds and release produces 1,200,128 bytes in 5.6545912 seconds with warm Zydis. Compared with the same-machine warm baseline, release is 3,584 bytes larger (about 0.30%); source/compiler reduction did not reduce binary size. Each final DLL compiler audit finds 11 production sources including Integration.cpp and Runtime.cpp, with zero SDK source/header or obsolete support dependencies. Evidence is under `build/sdk-refactor/final-windows`, `final-compiler-dependency-audit.log`, and `final-compiler-deps/`. Attribution comments and license copies remain; notices describe extracted private code. Required live game comparisons and the actual startup-version log remain unverified. Version defaults and packages are next.
+Milestone 4, committed as `d747e51`, switches production and final tests to the same minimal implementation. All 950 SDK files, the umbrella, and four obsolete top-level support headers are absent from the current tree. Inventory reports seven integration files totaling 79,466 bytes (below 262,144), zero active legacy references, and PASS. MSVC debug and release public suites each pass 69/69 checks, including independent render/capture byte-write sentinels and conversion diagnostic regressions. Both clean DLL builds pass; debug produces 2,008,064 bytes in 5.8213837 seconds and release produces 1,200,128 bytes in 5.6545912 seconds with warm Zydis. Compared with the same-machine warm baseline, release is 3,584 bytes larger (about 0.30%); source/compiler reduction did not reduce binary size. Each final DLL compiler audit finds 11 production sources including Integration.cpp and Runtime.cpp, with zero SDK source/header or obsolete support dependencies. Evidence is under `build/sdk-refactor/final-windows`, `final-compiler-dependency-audit.log`, and `final-compiler-deps/`. Attribution comments and license copies remain; notices describe extracted private code. Required live game comparisons and the actual startup-version log remain unverified. Version defaults and package checks are recorded below.
+
+
+Milestone 5 independent verification is complete. Both version defaults are 1.3.0, examples and the unreleased changelog are updated, and CI checks minimal inventory plus debug/release tests before packaging while preserving source/version checks and tool pins. Workflow/issue YAML syntax passed; GitHub-hosted execution itself was not run. The unchanged package script ran successfully with MSVC 2022 using the isolated environment selection. An additional fresh xmake configuration without version/VS command overrides resolved defaults to fix_version=1.3.0 and vs=2022. Binary inspection finds the 1.3.0 literal and no 1.2.5 literal; this is embedded-version evidence, not a running game's startup log. Both archives match the final ASI (1,200,128 bytes), root configuration/notices and all license copies byte for byte; only standalone contains the verified pinned loader, and only Reloaded-II contains ModConfig.json with ModVersion=1.3.0. Archives contain no SDK, tests, tools, or plan. Artifact hash and size evidence follows; logs are under `build/sdk-refactor/package-windows`. A second local zipfile inspection also passed and `git diff --check e119244` passed.
+
+The remaining requirement is user-run live game validation, including callback no-reallocation compatibility, actual startup log version, console open/query/rebound key, render sizes and menu images at the requested resolution/multiplier/screen-percentage/clamp combinations, feature toggles, and unrelated fix smoke checks. Blocker category: missing data (essential game outcomes/logs cannot be inferred from synthetic fixtures). The user explicitly forbids agent game execution; no game or DLL was loaded by any contributor agent. Authorized recovery completed all independent work and prepared both baseline and final artifacts. The smallest input needed to resume is the user's observed results and logs from the scenarios in Validation and Acceptance, with executable identity/store/content variant/settings. After receiving them, investigate discrepancies, record actual supported variants, mark live acceptance only if passed, and set the changelog's actual completion date. No release, tag, or merge is authorized before human review.
 
 ## Context and Orientation
+
+This section describes the preparation baseline. The completed implementation and current file paths are recorded in Outcomes & Retrospective: the full generated SDK and top-level support paths described below now exist only in baseline Git history. The final feature code uses `src/unreal/Integration.hpp`; final private layouts/runtime/support live in `src/unreal/detail/`.
 
 The repository root is `/home/camo/Projects/P3RFix` in the preparation environment. On Windows, use the root of the same branch checkout as the working directory for every command below. P3RFix is a C++ shared library packaged as an `.asi` file. An ASI loader or Reloaded-II loads that library into Persona 3 Reload; this is not a standalone program that can be run on Linux to exercise the game hooks.
 
@@ -216,7 +226,7 @@ All shell commands below run from the repository root. This branch already exist
 On Windows, first `Set-Location` to the corresponding checkout root and use PowerShell 7.2 or later with Visual Studio 2022 C++ build tools, Windows SDK, CMake, Python 3, and xmake available. Use the existing workflow's xmake version `3.1.1` when comparing measurements. Once the milestone 1 inventory script exists:
 
     python tools/unreal_inventory.py --phase legacy
-    xmake f -y -p windows -a x64 -m release --fix_version=1.2.5
+    xmake f -y -p windows -a x64 -m release --vs=2022 --fix_version=1.2.5
     xmake clean P3RFix
     xmake build -y -v P3RFix
     Get-Item build/windows/x64/release/P3RFix.asi
@@ -225,11 +235,11 @@ Expected initial inventory values are `950` total SDK files, `20` reachable SDK 
 
 After adding the test target, use the following commands for milestone 3 and subsequent work. During the prototype, document the private runtime source list; after milestone 4 these commands must test the final public implementation:
 
-    xmake f -y -p windows -a x64 -m debug --fix_version=1.3.0
+    xmake f -y -p windows -a x64 -m debug --vs=2022 --fix_version=1.3.0
     xmake build -y -v unreal-integration-tests
     xmake run unreal-integration-tests
     xmake build -y -v P3RFix
-    xmake f -y -p windows -a x64 -m release --fix_version=1.3.0
+    xmake f -y -p windows -a x64 -m release --vs=2022 --fix_version=1.3.0
     xmake build -y -v unreal-integration-tests
     xmake run unreal-integration-tests
     xmake clean P3RFix
@@ -238,7 +248,15 @@ After adding the test target, use the following commands for milestone 3 and sub
 
 The final test runner prints named check results followed by `69/69 checks passed` and exits zero only when every check passes; that count was observed with MSVC in both debug and release. The additive prototype previously passed 60/60 console checks before promotion. In minimal mode, the inventory must report zero legacy references and less than `262144` bytes under `src/unreal/`. A verbose production build must list the new integration implementation files and no `src/SDK/*` files. Clear stale objects through `xmake clean P3RFix`; source deletion followed only by incremental linking is insufficient evidence.
 
-Final package commands, still from the Windows checkout root:
+Final package commands, still from the Windows checkout root. On the supplied VM with multiple installed Visual Studio versions, first set an isolated task-global selection, clear the project configuration, and check the selected version. This was the actual successful recovery; generic Windows users with only VS 2022 may omit the selection setup:
+
+    $env:XMAKE_GLOBALDIR = Join-Path $env:USERPROFILE 'Projects/P3RFix-sdk-refactor/tools/xmake-global-vs2022'
+    xmake g -y --vs=2022
+    xmake f -c -y -p windows -a x64 -m release --fix_version=1.3.0
+    Get-Content .xmake/windows/x64/xmake.conf | Select-String 'fix_version|vs\s*='
+    xmake clean P3RFix
+
+Then run:
 
     ./create_release.ps1 -Version 1.3.0
     Get-Item build/P3RFix_1.3.0.zip, build/P3RFix_Reloaded-II.zip
@@ -246,7 +264,7 @@ Final package commands, still from the Windows checkout root:
     git diff --check
     git status --short --branch
 
-Expect both ZIP files to exist, staged `ModVersion` to equal `1.3.0`, and a game startup log reporting `P3RFix` version `1.3.0`. Inspect archive entries using `System.IO.Compression.ZipFile` or another locally available archive reader. Both packages must contain the same final `P3RFix.asi`, configuration, notices, and applicable licenses; the standalone package includes the existing pinned loader, while Reloaded-II includes `ModConfig.json`. No SDK dump, test executable, inventory script, or plan belongs in either archive. No tag, push, GitHub release, or publication command is part of these concrete steps.
+Expect both ZIP files to exist, archived Reloaded-II `ModVersion` to equal `1.3.0`, and a game startup log reporting `P3RFix` version `1.3.0`. Inspect archive entries using `System.IO.Compression.ZipFile` or another locally available archive reader. Both packages must contain the same final `P3RFix.asi`, configuration, notices, and applicable licenses; the standalone package includes the existing pinned loader, while Reloaded-II includes `ModConfig.json`. No SDK dump, test executable, inventory script, or plan belongs in either archive. No tag, GitHub release, merge, or release publication is part of these steps. The user separately authorized pushing the implementation branch to origin for human review.
 
 ## Validation and Acceptance
 
@@ -282,12 +300,44 @@ Save the deployed game's original `P3RFix.asi`, `P3RFix.ini`, and any edited `In
 
 The preparation baseline is commit `e119244314f345dada02914a01a504a169bc0c16`. The branch is `refactor/minimal-unreal-integration`, and release intent is `1.3.0`. The measured 58,516,425-byte SDK directory is approximately 55.8 MiB; the reachable 13,330,488-byte subset is approximately 12.7 MiB. Sizes are the sum of file content bytes, not allocated filesystem blocks or Git object storage.
 
+Submodule revisions were verified unchanged at preparation and final audit: `external/inipp` = `3f224f1eed7a67d5d7e5fc8cab72de02a056b966`, `external/safetyhook` = `983ba5c4b72866c8ed5020b6d57b7108fd1622c2`, `external/spdlog` = `f1d748e5e3edfa4b1778edea003bac94781bc7b7`, `external/zydis` = `f2ad85f92fc6645a642053882eaf0e95693977e9`, and nested Zycore = `75a36c45ae1ad382b0f4e0ede0af84c11ee69928`.
+
 The final production source declaration should express the relevant inputs explicitly, alongside the existing dependencies:
 
     add_files("src/*.cpp", "external/safetyhook/src/*.cpp",
               "src/unreal/Integration.cpp", "src/unreal/detail/Runtime.cpp")
 
 Keep concise actual transcripts below this paragraph as work proceeds: inventory before/after, the real test count, clean build result and conditions, final binary size, package metadata, and the game log excerpt showing version, console construction, bound key, and render texture size changes. Do not record desired outputs as though they were observed. Retain original attributions in copied code and record the baseline source symbol beside each extracted layout or operation.
+
+Observed automated evidence (the game log is still unavailable):
+
+    Total SDK: 950 files, 58516425 bytes
+    Reachable SDK: 20 files, 13330488 bytes
+    Unused SDK: 930 files, 45185937 bytes
+    Unresolved local includes/build inputs: 0
+
+    Focused integration: 7 files, 79466 bytes
+    Legacy references: 0
+    Minimal inventory: PASS
+
+    MSVC debug: 69/69 checks passed
+    MSVC release: 69/69 checks passed
+    debug: 11 compiled production sources; zero SDK or obsolete support compiler dependencies
+    release: 11 compiled production sources; zero SDK or obsolete support compiler dependencies
+
+Final package evidence:
+
+    P3RFix_1.3.0.zip: 878059 bytes
+    SHA256 e7eb9217a17fc2e7370b1d91a52f4db7411940f98f8c6b11395b528e8722defd
+    P3RFix_Reloaded-II.zip: 482537 bytes
+    SHA256 7f373866614c8a1efc4761369d9edf4b6642ba48e457306e7732c69dc918038e
+    Shared ASI: 1200128 bytes
+    SHA256 59562389cb5a81ebb5271f21ed71c1624f4b139a85a066fd3f1f5731c8976343
+    Package contents and shared ASI/configuration/notices/licenses: PASS
+    Reloaded-II ModVersion: 1.3.0
+    Embedded version literal: PASS; actual game startup log: NOT RUN
+
+The local handoff files are `build/P3RFix_1.3.0.zip`, `build/P3RFix_Reloaded-II.zip`, and baseline `build/sdk-refactor/baseline-windows/P3RFix-baseline-1.2.5.asi` (SHA256 `b60c846120176ce2c6d0a7774e87737d96b91a91838df5fb190387e65548a6d3`). The VM retains the task checkout and evidence at `C:\Users\camo\Projects\P3RFix-sdk-refactor\pruned`, with package artifacts in its build directory. Exact VM selection commands are also preserved locally in ignored `build/sdk-refactor/package-vs2022.ps1`.
 
 ## Interfaces and Dependencies
 
@@ -394,3 +444,5 @@ The final module uses the C++ standard library and retained private text helpers
 2026-10-01 05:40Z: Promoted the verified private runtime locally, removed remaining SDK/support paths, enabled all public tests, and fixed the metadata conversion diagnostic gap found in review. Final Windows builds/tests are running; version defaults/docs/package checks follow after that verified switch is committed.
 
 2026-10-01 05:42Z: Recorded final minimal public suite/build/inventory/compiler evidence. Production removal and boundary checks pass, while live-game acceptance remains explicitly incomplete. Next commit sets version defaults and final package/CI metadata.
+
+2026-10-01 05:51Z: Reread the entire plan and audited every requirement against implementation/evidence. Independent code, MSVC, inventory, provenance, CI syntax, version and package checks passed; only mandatory user-run game evidence and its completion date remain. Documented VS selection recovery, artifact hashes, exact handoff paths, unchanged dependency revisions, and concrete resumption steps.

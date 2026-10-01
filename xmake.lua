@@ -6,7 +6,7 @@ set_languages("cxxlatest", "clatest")
 set_optimize("smallest")
 
 option("fix_version")
-    set_default("1.2.5")
+    set_default("1.3.0")
     set_showmenu(true)
     set_description("Version embedded in P3RFix (set from the release tag in CI)")
 option_end()

@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0] - Unreleased
+
+### Maintenance
+
+- Replace the generated game SDK with a focused private Unreal integration for console construction and menu render textures, with documented memory layouts and synthetic boundary tests.
+- Report unavailable console dependencies without preventing independent fixes; keep console key reporting separate from console creation.
+- Validate the integration tests and source inventory in Windows build automation before packaging.
+
 ## [1.2.5] - 2026-09-30
 
 ### Fixed

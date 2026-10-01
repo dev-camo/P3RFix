@@ -8,7 +8,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 if (-not $Version) {
-    throw 'Pass a release version, for example: ./create_release.ps1 -Version 1.2.5'
+    throw 'Pass a release version, for example: ./create_release.ps1 -Version 1.3.0'
 }
 if (-not $IsWindows) {
     throw 'Release builds require Windows with Visual Studio 2022, CMake, and xmake.'
